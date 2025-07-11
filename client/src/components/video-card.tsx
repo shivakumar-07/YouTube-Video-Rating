@@ -130,17 +130,33 @@ export default function VideoCard({ video, onAnalyze }: VideoCardProps) {
               disabled={analyzeMutation.isPending}
             >
               <RefreshCw className={`w-4 h-4 mr-1 ${analyzeMutation.isPending ? 'animate-spin' : ''}`} />
-              {analyzeMutation.isPending ? 'Analyzing...' : 'Analyze Comments'}
+              {analyzeMutation.isPending ? 'Deep Analysis...' : 'Deep Analysis'}
             </Button>
           </div>
 
-          {video.analyzed && (video.trustScore || analysisResult) && (
+          {video.analyzed && (video.trustScore !== null) && (
             <>
               {/* Trust Meter */}
               <TrustMeter 
                 score={analysisResult?.overallTrustScore || video.trustScore || 0} 
                 className="mb-4"
               />
+
+              {/* Quick Trust Summary */}
+              <div className="mb-4">
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-gray-600">Quick Analysis</span>
+                  <span className="text-xs text-gray-500">
+                    {analysisResult ? `${analysisResult.totalComments} comments` : '~50 comments'}
+                  </span>
+                </div>
+                <div className="mt-2 text-xs text-gray-500">
+                  {video.trustScore >= 8 ? '✅ High Trust - Authentic positive feedback' :
+                   video.trustScore >= 6 ? '⚠️ Medium Trust - Mixed feedback quality' :
+                   video.trustScore >= 4 ? '❌ Low Trust - Suspicious activity detected' :
+                   '🚫 Very Low Trust - High spam/bot activity'}
+                </div>
+              </div>
 
               {/* Sentiment Breakdown */}
               {analysisResult && (
@@ -173,7 +189,7 @@ export default function VideoCard({ video, onAnalyze }: VideoCardProps) {
 
           {!video.analyzed && !analyzeMutation.isPending && (
             <div className="text-center py-4 text-gray-500">
-              Click "Analyze Comments" to get trust analysis
+              <div className="animate-pulse">Analyzing comments...</div>
             </div>
           )}
         </div>

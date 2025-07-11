@@ -15,25 +15,84 @@ interface QualityIndicator {
 export class SentimentService {
   
   analyzeSentiment(text: string): SentimentResult {
-    // Simple sentiment analysis using keyword matching
-    const positiveWords = ['good', 'great', 'excellent', 'amazing', 'awesome', 'love', 'best', 'fantastic', 'wonderful', 'perfect', 'helpful', 'useful', 'thanks', 'thank you'];
-    const negativeWords = ['bad', 'terrible', 'awful', 'hate', 'worst', 'horrible', 'disappointing', 'useless', 'waste', 'boring', 'stupid', 'sucks'];
+    // Enhanced sentiment analysis with weighted scoring and context
+    const positiveWords = {
+      // Strong positive
+      'excellent': 3, 'amazing': 3, 'fantastic': 3, 'outstanding': 3, 'brilliant': 3,
+      'perfect': 2.5, 'wonderful': 2.5, 'awesome': 2.5, 'incredible': 2.5,
+      'great': 2, 'good': 2, 'helpful': 2, 'useful': 2, 'love': 2,
+      'nice': 1.5, 'fine': 1.5, 'okay': 1, 'thanks': 1.5, 'thank': 1.5,
+      'recommend': 2, 'best': 2.5, 'quality': 1.5, 'works': 1.5, 'easy': 1.5
+    };
     
-    const words = text.toLowerCase().split(/\s+/);
+    const negativeWords = {
+      // Strong negative
+      'terrible': 3, 'awful': 3, 'horrible': 3, 'worst': 3, 'hate': 3,
+      'useless': 2.5, 'waste': 2.5, 'disappointing': 2.5, 'pathetic': 2.5,
+      'bad': 2, 'poor': 2, 'wrong': 2, 'fail': 2, 'broken': 2,
+      'boring': 1.5, 'meh': 1, 'not': 1, 'no': 0.5, 'stupid': 2,
+      'sucks': 2, 'shit': 2.5, 'crap': 2, 'garbage': 2.5
+    };
+    
+    const intensifiers = {
+      'very': 1.5, 'extremely': 2, 'really': 1.3, 'totally': 1.4,
+      'absolutely': 1.8, 'completely': 1.6, 'quite': 1.2, 'so': 1.3
+    };
+    
+    const negations = ['not', 'no', 'never', 'nothing', 'nobody', 'neither', 'none'];
+    
+    const words = text.toLowerCase().match(/\b\w+\b/g) || [];
     let positiveScore = 0;
     let negativeScore = 0;
+    let totalWords = words.length;
     
-    words.forEach(word => {
-      if (positiveWords.includes(word)) positiveScore++;
-      if (negativeWords.includes(word)) negativeScore++;
-    });
+    for (let i = 0; i < words.length; i++) {
+      const word = words[i];
+      let multiplier = 1;
+      let isNegated = false;
+      
+      // Check for intensifiers in previous word
+      if (i > 0 && intensifiers[words[i-1]]) {
+        multiplier = intensifiers[words[i-1]];
+      }
+      
+      // Check for negations in previous 2 words
+      for (let j = Math.max(0, i-2); j < i; j++) {
+        if (negations.includes(words[j])) {
+          isNegated = true;
+          break;
+        }
+      }
+      
+      if (positiveWords[word]) {
+        const score = positiveWords[word] * multiplier;
+        if (isNegated) {
+          negativeScore += score;
+        } else {
+          positiveScore += score;
+        }
+      } else if (negativeWords[word]) {
+        const score = negativeWords[word] * multiplier;
+        if (isNegated) {
+          positiveScore += score;
+        } else {
+          negativeScore += score;
+        }
+      }
+    }
     
-    const totalScore = positiveScore - negativeScore;
+    // Normalize scores based on text length
+    const lengthFactor = Math.max(1, totalWords / 10);
+    positiveScore = positiveScore / lengthFactor;
+    negativeScore = negativeScore / lengthFactor;
     
-    if (totalScore > 0) {
-      return { sentiment: 'positive', score: Math.min(1, totalScore / 5) };
-    } else if (totalScore < 0) {
-      return { sentiment: 'negative', score: Math.max(-1, totalScore / 5) };
+    const netScore = positiveScore - negativeScore;
+    const confidence = Math.min(1, (positiveScore + negativeScore) / 3);
+    
+    if (netScore > 0.5) {
+      return { sentiment: 'positive', score: Math.min(1, netScore / 2) };
+    } else if (netScore < -0.5) {
+      return { sentiment: 'negative', score: Math.max(-1, netScore / 2) };
     } else {
       return { sentiment: 'neutral', score: 0 };
     }
@@ -67,18 +126,42 @@ export class SentimentService {
   }
 
   calculateTrustScore(comment: Comment): number {
-    let score = 7; // Base score
+    let score = 5; // Base score
     
-    // Positive factors
-    if (comment.isVerified) score += 2;
-    if (comment.likeCount > 5) score += 1;
-    if (comment.textOriginal.length > 50) score += 1;
+    // Positive factors (weighted by importance)
+    if (comment.isVerified) score += 3;
+    if (comment.likeCount > 20) score += 2;
+    else if (comment.likeCount > 5) score += 1;
+    if (comment.textOriginal.length > 100) score += 1.5;
+    else if (comment.textOriginal.length > 50) score += 1;
     
-    // Negative factors
-    if (comment.isSpam) score -= 4;
-    if (comment.isBotLike) score -= 3;
-    if (comment.isSuspicious) score -= 2;
-    if (comment.likeCount === 0 && comment.textOriginal.length < 20) score -= 1;
+    // Content quality indicators
+    const hasQuestions = /\?/.test(comment.textOriginal);
+    const hasSpecificDetails = /\b(minute|hour|day|week|month|year|\d+)\b/.test(comment.textOriginal);
+    const hasPersonalExperience = /\b(I|my|me|tried|used|bought|purchased)\b/i.test(comment.textOriginal);
+    
+    if (hasSpecificDetails) score += 1;
+    if (hasPersonalExperience) score += 1;
+    if (hasQuestions) score += 0.5;
+    
+    // Engagement factors
+    const likeRatio = comment.likeCount / Math.max(1, comment.textOriginal.length / 10);
+    if (likeRatio > 2) score += 1;
+    
+    // Negative factors (weighted by severity)
+    if (comment.isSpam) score -= 5;
+    if (comment.isBotLike) score -= 4;
+    if (comment.isSuspicious) score -= 3;
+    if (comment.likeCount === 0 && comment.textOriginal.length < 20) score -= 2;
+    
+    // Pattern-based penalties
+    const hasEmojis = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu.test(comment.textOriginal);
+    const hasExcessivePunctuation = /[!]{3,}|[?]{3,}|[.]{3,}/.test(comment.textOriginal);
+    const hasAllCaps = /^[A-Z\s!?.,]{10,}$/.test(comment.textOriginal);
+    
+    if (hasAllCaps) score -= 1;
+    if (hasExcessivePunctuation) score -= 0.5;
+    if (hasEmojis && comment.textOriginal.length < 50) score -= 0.5;
     
     return Math.max(0, Math.min(10, score));
   }

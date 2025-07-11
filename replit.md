@@ -4,7 +4,7 @@
 
 This is a full-stack web application built to analyze the trustworthiness of YouTube videos by examining their comments using sentiment analysis. The app allows users to search for YouTube videos, analyze comment patterns, and generate trust scores based on various factors including sentiment, spam detection, and bot-like behavior identification.
 
-**Status: Fully functional and deployed** - The application is running successfully with YouTube API integration working properly.
+**Status: Fully functional and deployed** - The application is running successfully with YouTube API integration, comprehensive comment analysis, and automatic trust scoring on search results.
 
 ## User Preferences
 
@@ -53,9 +53,32 @@ Preferred communication style: Simple, everyday language.
 
 ## Data Flow
 
-1. **Search Flow**: User searches for videos → API calls YouTube service → Results stored in database → Frontend displays video cards
-2. **Analysis Flow**: User triggers analysis → API fetches comments from YouTube → Sentiment analysis performed → Results stored and aggregated → Trust score calculated → Frontend updates with analysis results
+1. **Search Flow**: User searches for videos → API calls YouTube service → Results stored in database → **Automatic quick analysis** performed (50 comments) → Trust scores calculated → Frontend displays video cards with trust meters
+2. **Deep Analysis Flow**: User triggers deep analysis → API fetches comprehensive comments (up to 500 + replies) → Enhanced sentiment analysis performed → Results stored and aggregated → Detailed trust score calculated → Frontend updates with comprehensive analysis results
 3. **Export Flow**: User requests data export → API generates JSON report → File downloaded to user's device
+
+## Recent Improvements (January 2025)
+
+### Enhanced ML-Inspired Sentiment Analysis
+- **Weighted scoring system** with positive/negative word importance levels
+- **Context-aware analysis** including negation detection and intensifiers
+- **Content quality indicators** analyzing personal experience, specific details, and engagement patterns
+- **Advanced trust scoring** incorporating like ratios, comment length, and engagement quality
+- **Pattern recognition** for detecting spam, bot behavior, and suspicious activity
+
+### Automatic Trust Analysis
+- **Instant trust scores** displayed on search results without manual analysis
+- **Quick preview analysis** using 50 comments for immediate feedback
+- **Deep analysis button** for comprehensive review of up to 500 comments + replies
+- **Enhanced comment collection** including replies and threaded discussions
+- **Intelligent result count filtering** properly handling 5, 10, 15, 20+ result requests
+
+### User Experience Improvements
+- **Automatic analysis on search** - No need to click each video individually
+- **Visual trust indicators** with color-coded trust levels and explanations
+- **Comprehensive comment pagination** fetching all available comments
+- **Better loading states** showing analysis progress
+- **Enhanced error handling** for videos with disabled comments
 
 ## External Dependencies
 

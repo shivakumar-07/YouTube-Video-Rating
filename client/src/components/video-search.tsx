@@ -33,7 +33,7 @@ export default function VideoSearch({ onSearch }: VideoSearchProps) {
     try {
       const response = await apiRequest(
         "GET",
-        `/api/videos/search?q=${encodeURIComponent(searchQuery)}&maxResults=${maxResults}&order=${order}`
+        `/api/videos/search?q=${encodeURIComponent(searchQuery)}&maxResults=${parseInt(maxResults)}&order=${order}`
       );
       const results = await response.json();
       onSearch(results);
@@ -84,7 +84,7 @@ export default function VideoSearch({ onSearch }: VideoSearchProps) {
               className="bg-primary text-white hover:bg-blue-700"
             >
               <Search className="w-4 h-4 mr-2" />
-              {isLoading ? "Searching..." : "Search"}
+              {isLoading ? "Searching & Analyzing..." : "Search"}
             </Button>
           </div>
           <div className="mt-4 flex space-x-4">
@@ -95,6 +95,8 @@ export default function VideoSearch({ onSearch }: VideoSearchProps) {
               <SelectContent>
                 <SelectItem value="5">5 results</SelectItem>
                 <SelectItem value="10">10 results</SelectItem>
+                <SelectItem value="15">15 results</SelectItem>
+                <SelectItem value="20">20 results</SelectItem>
                 <SelectItem value="25">25 results</SelectItem>
                 <SelectItem value="50">50 results</SelectItem>
               </SelectContent>

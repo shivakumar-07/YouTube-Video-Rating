@@ -101,34 +101,78 @@ export class YouTubeService {
     }));
   }
 
-  async getVideoComments(videoId: string, maxResults: number = 100): Promise<InsertComment[]> {
+  async getVideoComments(videoId: string, maxResults: number = 500): Promise<InsertComment[]> {
     if (!this.apiKey) {
       throw new Error("YouTube API key is required. Please set YOUTUBE_API_KEY environment variable.");
     }
     
-    const commentsUrl = `${YOUTUBE_BASE_URL}/commentThreads?key=${this.apiKey}&videoId=${videoId}&part=snippet&maxResults=${maxResults}&order=relevance`;
+    const allComments: InsertComment[] = [];
+    let nextPageToken = '';
+    const pageSize = 100; // YouTube API limit per request
     
-    const response = await fetch(commentsUrl);
-    if (!response.ok) {
-      throw new Error(`YouTube API error: ${response.status} ${response.statusText}`);
+    while (allComments.length < maxResults) {
+      const remaining = maxResults - allComments.length;
+      const currentPageSize = Math.min(pageSize, remaining);
+      
+      const commentsUrl = `${YOUTUBE_BASE_URL}/commentThreads?key=${this.apiKey}&videoId=${videoId}&part=snippet,replies&maxResults=${currentPageSize}&order=relevance${nextPageToken ? `&pageToken=${nextPageToken}` : ''}`;
+      
+      const response = await fetch(commentsUrl);
+      if (!response.ok) {
+        if (response.status === 403) {
+          console.warn(`Comments disabled for video ${videoId}`);
+          break;
+        }
+        throw new Error(`YouTube API error: ${response.status} ${response.statusText}`);
+      }
+      
+      const data = await response.json();
+      
+      if (!data.items || data.items.length === 0) {
+        break;
+      }
+      
+      // Process top-level comments
+      for (const item of data.items) {
+        const comment = item.snippet.topLevelComment.snippet;
+        allComments.push({
+          id: item.snippet.topLevelComment.id,
+          videoId: videoId,
+          authorDisplayName: comment.authorDisplayName,
+          authorProfileImageUrl: comment.authorProfileImageUrl,
+          authorChannelId: comment.authorChannelId,
+          textOriginal: comment.textOriginal,
+          likeCount: comment.likeCount,
+          publishedAt: new Date(comment.publishedAt),
+          isVerified: false,
+        });
+        
+        // Add replies if available
+        if (item.replies && item.replies.comments && allComments.length < maxResults) {
+          for (const reply of item.replies.comments) {
+            if (allComments.length >= maxResults) break;
+            const replySnippet = reply.snippet;
+            allComments.push({
+              id: reply.id,
+              videoId: videoId,
+              authorDisplayName: replySnippet.authorDisplayName,
+              authorProfileImageUrl: replySnippet.authorProfileImageUrl,
+              authorChannelId: replySnippet.authorChannelId,
+              textOriginal: replySnippet.textOriginal,
+              likeCount: replySnippet.likeCount,
+              publishedAt: new Date(replySnippet.publishedAt),
+              isVerified: false,
+            });
+          }
+        }
+        
+        if (allComments.length >= maxResults) break;
+      }
+      
+      nextPageToken = data.nextPageToken;
+      if (!nextPageToken) break;
     }
     
-    const data = await response.json();
-    
-    return data.items.map((item: any) => {
-      const comment = item.snippet.topLevelComment.snippet;
-      return {
-        id: item.snippet.topLevelComment.id,
-        videoId: videoId,
-        authorDisplayName: comment.authorDisplayName,
-        authorProfileImageUrl: comment.authorProfileImageUrl,
-        authorChannelId: comment.authorChannelId,
-        textOriginal: comment.textOriginal,
-        likeCount: comment.likeCount,
-        publishedAt: new Date(comment.publishedAt),
-        isVerified: false, // YouTube API doesn't provide this directly
-      };
-    });
+    return allComments;
   }
 }
 
