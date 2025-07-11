@@ -4,6 +4,8 @@
 
 This is a full-stack web application built to analyze the trustworthiness of YouTube videos by examining their comments using sentiment analysis. The app allows users to search for YouTube videos, analyze comment patterns, and generate trust scores based on various factors including sentiment, spam detection, and bot-like behavior identification.
 
+**Status: Fully functional and deployed** - The application is running successfully with YouTube API integration working properly.
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.

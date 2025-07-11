@@ -84,7 +84,7 @@ export type InsertAnalysis = z.infer<typeof insertAnalysisSchema>;
 
 export const searchVideoSchema = z.object({
   q: z.string().min(1, "Search query is required"),
-  maxResults: z.number().min(1).max(50).default(10),
+  maxResults: z.coerce.number().min(1).max(50).default(10),
   order: z.enum(["relevance", "date", "rating", "viewCount"]).default("relevance"),
   publishedAfter: z.string().optional(),
   videoDuration: z.enum(["any", "short", "medium", "long"]).default("any"),
