@@ -52,9 +52,10 @@ export default function VideoCard({ video, onAnalyze }: VideoCardProps) {
     return num.toString();
   };
 
-  const formatDate = (date: Date) => {
+  const formatDate = (date: Date | string) => {
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const videoDate = new Date(date);
+    const diffTime = Math.abs(now.getTime() - videoDate.getTime());
     const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
     
     if (diffDays === 1) return "1 day ago";

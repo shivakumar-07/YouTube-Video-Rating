@@ -68,9 +68,10 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
 
   const filteredComments = filterComments(comments);
 
-  const formatTimeAgo = (date: Date) => {
+  const formatTimeAgo = (date: Date | string) => {
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
+    const commentDate = new Date(date);
+    const diffTime = Math.abs(now.getTime() - commentDate.getTime());
     const diffHours = Math.floor(diffTime / (1000 * 60 * 60));
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
