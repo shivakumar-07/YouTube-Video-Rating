@@ -80,12 +80,12 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
   const triedFallback = useRef(false);
   const [isRetrying, setIsRetrying] = useState(false);
 
-  // Enhanced retry logic for fetching comments
+  // Robust retry logic for fetching comments
   const fetchComments = async () => {
     let attempts = 0;
     let lastError = null;
     setIsRetrying(true);
-    while (attempts < 3) {
+    while (attempts < 5) {
       try {
         const res = await fetch(`/api/videos/${video.id}/comments`, {
           headers: { "X-YouTube-API-Key": apiKey }
@@ -104,11 +104,11 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
           return comments;
         }
         // If empty, wait and retry
-        await new Promise(r => setTimeout(r, 1000 * (attempts + 1)));
+        await new Promise(r => setTimeout(r, 1500));
         attempts++;
       } catch (err: any) {
         lastError = err;
-        await new Promise(r => setTimeout(r, 1000 * (attempts + 1)));
+        await new Promise(r => setTimeout(r, 1500));
         attempts++;
       }
     }
@@ -126,7 +126,7 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
   // Debug: Log comments data
   useEffect(() => {
     if (comments) {
-      console.log('Fetched comments:', comments);
+      console.log('Fetched comments from backend:', comments);
     }
   }, [comments]);
 
@@ -188,41 +188,37 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
     }
   };
 
-  const filterComments = (comments: Comment[] = []) => {
-    console.log('Filtering comments:', comments.length, 'sentimentFilter:', sentimentFilter);
-    let filtered = [...comments];
-
-    // Filter by sentiment using simple detection
+  // Robust filtering and sorting logic for comments
+  const getFilteredAndSortedComments = () => {
+    if (!comments || comments.length === 0) return [];
+    let filtered = comments;
+    // Sentiment filter
     if (sentimentFilter !== "all") {
       filtered = filtered.filter(comment => {
-        const detectedSentiment = detectSentiment(comment.textOriginal);
-        console.log('Comment sentiment:', detectedSentiment, 'Text:', comment.textOriginal.substring(0, 50));
-        return detectedSentiment === sentimentFilter;
+        // Use backend sentiment if available, else fallback to detectSentiment
+        if (comment.sentiment) {
+          return comment.sentiment === sentimentFilter;
+        }
+        return detectSentiment(comment.textOriginal) === sentimentFilter;
       });
     }
-
-    console.log('After sentiment filtering:', filtered.length);
-
-    // Sort comments
-    filtered.sort((a, b) => {
-      switch (sortBy) {
-        case "newest":
-          return new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime();
-        case "oldest":
-          return new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime();
-        case "mostLiked":
-          return b.likeCount - a.likeCount;
-        case "trustScore":
-          return (b.trustScore || 0) - (a.trustScore || 0);
-        default:
-          return 0;
-      }
-    });
-
+    // Sorting
+    switch (sortBy) {
+      case "newest":
+        filtered = filtered.slice().sort((a, b) => new Date(b.publishedAt).getTime() - new Date(a.publishedAt).getTime());
+        break;
+      case "oldest":
+        filtered = filtered.slice().sort((a, b) => new Date(a.publishedAt).getTime() - new Date(b.publishedAt).getTime());
+        break;
+      case "mostLiked":
+        filtered = filtered.slice().sort((a, b) => (b.likeCount || 0) - (a.likeCount || 0));
+        break;
+      default:
+        break;
+    }
     return filtered;
   };
-
-  const filteredComments = filterComments(comments);
+  const filteredAndSortedComments = getFilteredAndSortedComments();
 
   const formatTimeAgo = (date: Date | string) => {
     const now = new Date();
@@ -268,7 +264,7 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
   // Fallback to 'all' if no comments match the filter
   useEffect(() => {
     if (!comments || comments.length === 0) return;
-    const filtered = filterComments(comments);
+    const filtered = getFilteredAndSortedComments();
     if (filtered.length === 0 && sentimentFilter !== "all" && !triedFallback.current) {
       setFallbackNotice(`No ${sentimentFilter} comments found. Showing all comments instead.`);
       setSentimentFilter("all");
@@ -307,7 +303,15 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
   if (comments && comments.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        <div>No comments found for this video on YouTube.<br/>Comments may be disabled or restricted by YouTube, or unavailable due to API limitations.</div>
+        <div>
+          <strong>No comments found for this video on YouTube.</strong><br/>
+          <ul className="list-disc list-inside text-left inline-block mt-2 mb-2">
+            <li>Comments may be disabled or restricted by YouTube.</li>
+            <li>Your YouTube API key may be invalid, expired, or out of quota.</li>
+            <li>The YouTube API may be rate-limited or temporarily unavailable.</li>
+          </ul>
+          <div className="mt-2">Try another video, or check your API key and quota.</div>
+        </div>
       </div>
     );
   }
@@ -459,7 +463,7 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
                   <SelectItem value="newest">Newest</SelectItem>
                   <SelectItem value="oldest">Oldest</SelectItem>
                   <SelectItem value="mostLiked">Most Liked</SelectItem>
-                  <SelectItem value="trustScore">Trust Score</SelectItem>
+                  {/* trustScore removed */}
                 </SelectContent>
               </Select>
             </div>
@@ -476,63 +480,66 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
           </button>
         </div>
 
-        {/* Comments List */}
-        <div className="space-y-4">
-          {filteredComments.map((comment) => (
-            <div 
-              key={comment.id} 
-              className={`border rounded-lg p-4 ${
-                comment.isSuspicious ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200'
-              }`}
-            >
-              <div className="flex items-start space-x-3">
-                <img 
-                  src={comment.authorProfileImageUrl || "/api/placeholder/32/32"} 
-                  alt={comment.authorDisplayName}
-                  className="w-8 h-8 rounded-full"
-                />
-                <div className="flex-1">
-                  <div className="flex items-center space-x-2 mb-2">
-                    <span className="font-medium text-gray-900">{comment.authorDisplayName}</span>
-                    <span className="text-xs text-gray-500">{formatTimeAgo(comment.publishedAt)}</span>
-                    {comment.isVerified && (
-                      <Badge className="bg-success/10 text-success">Verified</Badge>
-                    )}
-                    <Badge className={getSentimentColor(detectSentiment(comment.textOriginal))}>
-                      {detectSentiment(comment.textOriginal)}
+        {/* Comments List - Only show if real comments exist and match filters */}
+        {filteredAndSortedComments.length > 0 && (
+          <div className="space-y-4 mt-6">
+            <h3 className="text-lg font-semibold mb-3 text-blue-900">Comments</h3>
+            {filteredAndSortedComments.map((comment) => (
+              <div 
+                key={comment.id} 
+                className={`border rounded-lg p-4 ${
+                  comment.isSuspicious ? 'border-yellow-200 bg-yellow-50' : 'border-gray-200'
+                }`}
+              >
+                <div className="flex items-start space-x-3">
+                  <img 
+                    src={comment.authorProfileImageUrl || "/api/placeholder/32/32"} 
+                    alt={comment.authorDisplayName}
+                    className="w-8 h-8 rounded-full"
+                  />
+                  <div className="flex-1">
+                    <div className="flex items-center space-x-2 mb-2">
+                      <span className="font-medium text-gray-900">{comment.authorDisplayName}</span>
+                      <span className="text-xs text-gray-500">{formatTimeAgo(comment.publishedAt)}</span>
+                      {comment.isVerified && (
+                        <Badge className="bg-success/10 text-success">Verified</Badge>
+                      )}
+                      <Badge className={getSentimentColor(comment.sentiment || detectSentiment(comment.textOriginal))}>
+                        {comment.sentiment || detectSentiment(comment.textOriginal)}
                       </Badge>
-                    {comment.isSuspicious && (
-                      <Badge className="bg-yellow-100 text-yellow-800">Suspicious</Badge>
-                    )}
-                    {comment.isSpam && (
-                      <Badge className="bg-red-100 text-red-800">Spam</Badge>
-                    )}
-                    {comment.isBotLike && (
-                      <Badge className="bg-red-100 text-red-800">Bot-like</Badge>
-                    )}
-                  </div>
-                  <p className="text-white mb-2">{comment.textOriginal}</p>
-                  <div className="flex items-center space-x-4 text-sm text-gray-500">
-                    <span>
-                      <ThumbsUp className="w-3 h-3 mr-1 inline" />
-                      {comment.likeCount} likes
-                    </span>
-                    {comment.sentimentScore && (
-                      <span>Sentiment: {(comment.sentimentScore * 100).toFixed(0)}%</span>
-                    )}
-                    <span className={comment.isSuspicious ? "text-warning" : "text-success"}>
-                      {comment.isSuspicious ? "⚠ Suspicious" : "✓ Authentic"}
-                    </span>
+                      {comment.isSuspicious && (
+                        <Badge className="bg-yellow-100 text-yellow-800">Suspicious</Badge>
+                      )}
+                      {comment.isSpam && (
+                        <Badge className="bg-red-100 text-red-800">Spam</Badge>
+                      )}
+                      {comment.isBotLike && (
+                        <Badge className="bg-red-100 text-red-800">Bot-like</Badge>
+                      )}
+                    </div>
+                    <p className="text-white mb-2">{comment.textOriginal}</p>
+                    <div className="flex items-center space-x-4 text-sm text-gray-500">
+                      <span>
+                        <ThumbsUp className="w-3 h-3 mr-1 inline" />
+                        {comment.likeCount} likes
+                      </span>
+                      {comment.sentimentScore && (
+                        <span>Sentiment: {(comment.sentimentScore * 100).toFixed(0)}%</span>
+                      )}
+                      <span className={comment.isSuspicious ? "text-warning" : "text-success"}>
+                        {comment.isSuspicious ? "⚠ Suspicious" : "✓ Authentic"}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
-        </div>
-
-        {filteredComments.length === 0 && comments && comments.length > 0 && (
+            ))}
+          </div>
+        )}
+        {/* If no comments match filters, show a message */}
+        {filteredAndSortedComments.length === 0 && comments && comments.length > 0 && (
           <div className="text-center py-8 text-gray-500">
-            All comments were filtered out by your current filters.
+            No comments match the selected filters.
           </div>
         )}
         {fallbackNotice && (
