@@ -78,11 +78,13 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
   const [commentsError, setCommentsError] = useState<string | null>(null);
   const [fallbackNotice, setFallbackNotice] = useState<string | null>(null);
   const triedFallback = useRef(false);
+  const [isRetrying, setIsRetrying] = useState(false);
 
-  // Retry logic for fetching comments
+  // Enhanced retry logic for fetching comments
   const fetchComments = async () => {
     let attempts = 0;
     let lastError = null;
+    setIsRetrying(true);
     while (attempts < 3) {
       try {
         const res = await fetch(`/api/videos/${video.id}/comments`, {
@@ -96,13 +98,21 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
           } catch {}
           throw new Error(errorMsg);
         }
-        return res.json();
+        const comments = await res.json();
+        if (Array.isArray(comments) && comments.length > 0) {
+          setIsRetrying(false);
+          return comments;
+        }
+        // If empty, wait and retry
+        await new Promise(r => setTimeout(r, 1000 * (attempts + 1)));
+        attempts++;
       } catch (err: any) {
         lastError = err;
-        await new Promise(r => setTimeout(r, 500 * (attempts + 1))); // Exponential backoff
+        await new Promise(r => setTimeout(r, 1000 * (attempts + 1)));
         attempts++;
       }
     }
+    setIsRetrying(false);
     setCommentsError(lastError?.message || "Unable to fetch comments.");
     return [];
   };
@@ -244,7 +254,7 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
         headers: { "X-YouTube-API-Key": apiKey }
       });
       // Refetch comments after analysis
-      queryClient.invalidateQueries(['/api/videos', video.id, 'comments', apiKey]);
+      queryClient.invalidateQueries({ queryKey: ['/api/videos', video.id, 'comments', apiKey] });
     } catch (err) {
       setCommentsError('Failed to run deep analysis.');
     }
@@ -297,19 +307,19 @@ export default function CommentAnalysis({ video }: CommentAnalysisProps) {
   if (comments && comments.length === 0) {
     return (
       <div className="text-center py-8 text-gray-500">
-        <div>No comments found for this video on YouTube after deep analysis.</div>
+        <div>No comments found for this video on YouTube.<br/>Comments may be disabled or restricted by YouTube, or unavailable due to API limitations.</div>
       </div>
     );
   }
 
-  if (commentsLoading || analysisLoading) {
+  if (isRetrying || commentsLoading) {
     return (
       <Card className="card">
         <CardContent className="pt-6">
           <div className="flex items-center justify-center py-8">
             <div className="text-center">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-              <p className="text-muted-foreground">Loading analysis...</p>
+              <p className="text-muted-foreground">Loading comments...</p>
             </div>
           </div>
         </CardContent>
