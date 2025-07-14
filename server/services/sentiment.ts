@@ -349,8 +349,8 @@ export class SentimentService {
         else weightedNeu += weight;
       }
       const totalWeight = weightedPos + weightedNeu + weightedNeg;
-      // New formula: negative comments reduce score less
-      baseRating = ((weightedPos * 1) + (weightedNeu * 0.8) + (weightedNeg * -0.05)) / totalWeight * 5;
+      // New formula: negative comments reduce score more
+      baseRating = ((weightedPos * 1) + (weightedNeu * 0.8) + (weightedNeg * -0.2)) / totalWeight * 5;
       baseRating = Math.max(0, Math.min(5, baseRating));
       baseRating = Math.round(baseRating * 100) / 100;
       // Calculate confidence based on sample size and distribution
