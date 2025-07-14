@@ -3,114 +3,116 @@
 @tailwind utilities;
 
 :root {
-  --background: hsl(0, 0%, 100%);
-  --foreground: hsl(20, 14.3%, 4.1%);
-  --muted: hsl(60, 4.8%, 95.9%);
-  --muted-foreground: hsl(25, 5.3%, 44.7%);
-  --popover: hsl(0, 0%, 100%);
-  --popover-foreground: hsl(20, 14.3%, 4.1%);
-  --card: hsl(0, 0%, 100%);
-  --card-foreground: hsl(20, 14.3%, 4.1%);
-  --border: hsl(20, 5.9%, 90%);
-  --input: hsl(20, 5.9%, 90%);
-  --primary: hsl(207, 90%, 54%);
-  --primary-foreground: hsl(211, 100%, 99%);
-  --secondary: hsl(60, 4.8%, 95.9%);
-  --secondary-foreground: hsl(24, 9.8%, 10%);
-  --accent: hsl(60, 4.8%, 95.9%);
-  --accent-foreground: hsl(24, 9.8%, 10%);
-  --destructive: hsl(0, 84.2%, 60.2%);
-  --destructive-foreground: hsl(60, 9.1%, 97.8%);
-  --ring: hsl(20, 14.3%, 4.1%);
+  --background: #181818;
+  --foreground: #f1f1f1;
+  --muted: #232323;
+  --muted-foreground: #aaa;
+  --popover: #232323;
+  --popover-foreground: #f1f1f1;
+  --card: #212121;
+  --card-foreground: #f1f1f1;
+  --border: #303030;
+  --input: #232323;
+  --primary: #FF0000;
+  --primary-foreground: #fff;
+  --secondary: #232323;
+  --secondary-foreground: #f1f1f1;
+  --accent: #383838;
+  --accent-foreground: #fff;
+  --destructive: #d32f2f;
+  --destructive-foreground: #fff;
+  --ring: #FF0000;
   --radius: 0.5rem;
-  --success: hsl(142, 71%, 45%);
-  --warning: hsl(38, 92%, 50%);
-  --danger: hsl(0, 84.2%, 60.2%);
+  --success: #4caf50;
+  --warning: #ffb300;
+  --danger: #d32f2f;
 }
 
-.dark {
-  --background: hsl(240, 10%, 3.9%);
-  --foreground: hsl(0, 0%, 98%);
-  --muted: hsl(240, 3.7%, 15.9%);
-  --muted-foreground: hsl(240, 5%, 64.9%);
-  --popover: hsl(240, 10%, 3.9%);
-  --popover-foreground: hsl(0, 0%, 98%);
-  --card: hsl(240, 10%, 3.9%);
-  --card-foreground: hsl(0, 0%, 98%);
-  --border: hsl(240, 3.7%, 15.9%);
-  --input: hsl(240, 3.7%, 15.9%);
-  --primary: hsl(207, 90%, 54%);
-  --primary-foreground: hsl(211, 100%, 99%);
-  --secondary: hsl(240, 3.7%, 15.9%);
-  --secondary-foreground: hsl(0, 0%, 98%);
-  --accent: hsl(240, 3.7%, 15.9%);
-  --accent-foreground: hsl(0, 0%, 98%);
-  --destructive: hsl(0, 62.8%, 30.6%);
-  --destructive-foreground: hsl(0, 0%, 98%);
-  --ring: hsl(240, 4.9%, 83.9%);
-  --radius: 0.5rem;
-  --success: hsl(142, 71%, 45%);
-  --warning: hsl(38, 92%, 50%);
-  --danger: hsl(0, 62.8%, 30.6%);
+body {
+  @apply font-sans antialiased bg-background text-foreground;
+  font-family: 'Roboto', 'Arial', 'Helvetica Neue', Arial, sans-serif;
 }
 
 @layer base {
   * {
     @apply border-border;
   }
-
   body {
     @apply font-sans antialiased bg-background text-foreground;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    font-family: 'Roboto', 'Arial', 'Helvetica Neue', Arial, sans-serif;
   }
 }
 
 @layer utilities {
   .text-success {
-    color: hsl(var(--success));
+    color: var(--success);
   }
-  
   .text-warning {
-    color: hsl(var(--warning));
+    color: var(--warning);
   }
-  
   .text-danger {
-    color: hsl(var(--danger));
+    color: var(--danger);
   }
-  
   .bg-success {
-    background-color: hsl(var(--success));
+    background-color: var(--success);
   }
-  
   .bg-warning {
-    background-color: hsl(var(--warning));
+    background-color: var(--warning);
   }
-  
   .bg-danger {
-    background-color: hsl(var(--danger));
+    background-color: var(--danger);
   }
-  
   .border-success {
-    border-color: hsl(var(--success));
+    border-color: var(--success);
   }
-  
   .border-warning {
-    border-color: hsl(var(--warning));
+    border-color: var(--warning);
   }
-  
   .border-danger {
-    border-color: hsl(var(--danger));
+    border-color: var(--danger);
   }
-  
   .bg-success\/10 {
-    background-color: hsl(var(--success) / 0.1);
+    background-color: #4caf501a;
   }
-  
   .bg-warning\/10 {
-    background-color: hsl(var(--warning) / 0.1);
+    background-color: #ffb3001a;
   }
-  
   .bg-danger\/10 {
-    background-color: hsl(var(--danger) / 0.1);
+    background-color: #d32f2f1a;
+  }
+  /* YouTube-style chips */
+  .chip {
+    display: inline-block;
+    padding: 0.25rem 1rem;
+    border-radius: 9999px;
+    background: #232323;
+    color: #f1f1f1;
+    font-size: 0.95rem;
+    font-weight: 500;
+    margin-right: 0.5rem;
+    cursor: pointer;
+    transition: background 0.2s;
+  }
+  .chip.active, .chip:hover {
+    background: #383838;
+    color: #fff;
+  }
+  /* Sidebar and topbar */
+  .sidebar {
+    background: #212121;
+    color: #f1f1f1;
+    border-right: 1px solid #303030;
+  }
+  .topbar {
+    background: #212121;
+    color: #fff;
+    border-bottom: 1px solid #303030;
+  }
+  .card {
+    background: #232323;
+    color: #f1f1f1;
+    border-radius: 0.75rem;
+    box-shadow: 0 2px 8px 0 #00000033;
+    border: 1px solid #303030;
   }
 }

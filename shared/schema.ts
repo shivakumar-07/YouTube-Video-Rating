@@ -49,8 +49,10 @@ export const analysisResults = pgTable("analysis_results", {
   spamCount: integer("spam_count").notNull().default(0),
   botLikeCount: integer("bot_like_count").notNull().default(0),
   verifiedCount: integer("verified_count").notNull().default(0),
-  overallTrustScore: real("overall_trust_score").notNull(),
+  rating: real("rating").notNull(), // <-- changed from overallTrustScore
+  confidence: real("confidence").notNull().default(0), // Confidence level of the rating (0-1)
   qualityIndicators: json("quality_indicators"), // JSON array of indicator objects
+  engagementQuality: text("engagement_quality"), // 'Excellent', 'Good', 'Fair', 'Poor', 'Unknown'
   createdAt: timestamp("created_at").defaultNow(),
 });
 

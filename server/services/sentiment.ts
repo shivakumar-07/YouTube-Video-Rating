@@ -1,103 +1,117 @@
-import { type Comment, type InsertAnalysis } from "@shared/schema";
+import { type Comment, type InsertAnalysis, type Video } from "@shared/schema";
+import fetch from "node-fetch";
 
 interface SentimentResult {
   sentiment: 'positive' | 'negative' | 'neutral';
   score: number;
 }
 
+interface SentimentResponse {
+  results: Array<{
+    label: string;
+    score: number;
+  }>;
+  cached: boolean;
+  processing_time: number;
+  batch_count?: number;
+}
+
 interface QualityIndicator {
-  type: 'spam' | 'bot' | 'verified' | 'authentic';
+  type: 'spam' | 'bot' | 'verified' | 'authentic' | 'engagement';
   label: string;
   icon: string;
   color: string;
 }
 
+async function analyzeSentimentsWithHuggingFace(texts: string[]): Promise<{ sentiment: string, score: number }[]> {
+  try {
+    const sentimentServiceUrl = process.env.SENTIMENT_SERVICE_URL || "http://127.0.0.1:8000";
+    const response = await fetch(`${sentimentServiceUrl}/sentiment`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ texts }),
+      // Increase timeout to 5 minutes for large batches
+      signal: AbortSignal.timeout(300000) // 5 minutes
+    });
+    
+    if (!response.ok) {
+      throw new Error(`Sentiment service error: ${response.status} ${response.statusText}`);
+    }
+    
+    const data: SentimentResponse = await response.json();
+    
+    if (!data.results || !Array.isArray(data.results)) {
+      throw new Error("Sentiment service error: results is not an array. No comments or invalid response.");
+    }
+    
+    // Log performance metrics
+    console.log(`Sentiment analysis: ${texts.length} texts processed in ${data.processing_time?.toFixed(2)}s (cached: ${data.cached})`);
+    
+    return data.results.map((r: any) => ({
+    sentiment: r.label === "positive" ? "positive" : r.label === "negative" ? "negative" : "neutral",
+    score: r.score,
+  }));
+  } catch (error) {
+    console.error(`Sentiment analysis failed for ${texts.length} texts:`, error);
+    
+    // Return neutral sentiment for all texts as fallback
+    return texts.map(() => ({
+      sentiment: "neutral" as const,
+      score: 0.5
+    }));
+  }
+}
+
+// Add a simple fallback sentiment analyzer for when the main service fails
+function simpleSentimentAnalysis(text: string): { sentiment: string, score: number } {
+  const lowerText = text.toLowerCase();
+  
+  // Simple keyword-based sentiment analysis
+  const positiveWords = ['good', 'great', 'amazing', 'awesome', 'love', 'like', 'excellent', 'perfect', 'best', 'wonderful', 'fantastic', 'brilliant'];
+  const negativeWords = ['bad', 'terrible', 'awful', 'hate', 'dislike', 'worst', 'horrible', 'disappointing', 'waste', 'boring', 'stupid'];
+  
+  let positiveCount = 0;
+  let negativeCount = 0;
+  
+  positiveWords.forEach(word => {
+    if (lowerText.includes(word)) positiveCount++;
+  });
+  
+  negativeWords.forEach(word => {
+    if (lowerText.includes(word)) negativeCount++;
+  });
+  
+  if (positiveCount > negativeCount) {
+    return { sentiment: 'positive', score: 0.8 };
+  } else if (negativeCount > positiveCount) {
+    return { sentiment: 'negative', score: 0.2 };
+  } else {
+    return { sentiment: 'neutral', score: 0.5 };
+  }
+}
+
+// Health check function to verify sentiment service is working
+async function checkSentimentServiceHealth(): Promise<boolean> {
+  try {
+    const sentimentServiceUrl = process.env.SENTIMENT_SERVICE_URL || "http://127.0.0.1:8000";
+    const response = await fetch(`${sentimentServiceUrl}/sentiment/status`, {
+      method: "GET",
+      signal: AbortSignal.timeout(5000) // 5 second timeout
+    });
+    
+    if (response.ok) {
+      const data = await response.json();
+      return data.status === "healthy" && data.model_loaded === true;
+    }
+    return false;
+  } catch (error) {
+    console.error("Sentiment service health check failed:", error);
+    return false;
+  }
+}
+
 export class SentimentService {
   
-  analyzeSentiment(text: string): SentimentResult {
-    // Enhanced sentiment analysis with weighted scoring and context
-    const positiveWords = {
-      // Strong positive
-      'excellent': 3, 'amazing': 3, 'fantastic': 3, 'outstanding': 3, 'brilliant': 3,
-      'perfect': 2.5, 'wonderful': 2.5, 'awesome': 2.5, 'incredible': 2.5,
-      'great': 2, 'good': 2, 'helpful': 2, 'useful': 2, 'love': 2,
-      'nice': 1.5, 'fine': 1.5, 'okay': 1, 'thanks': 1.5, 'thank': 1.5,
-      'recommend': 2, 'best': 2.5, 'quality': 1.5, 'works': 1.5, 'easy': 1.5
-    };
-    
-    const negativeWords = {
-      // Strong negative
-      'terrible': 3, 'awful': 3, 'horrible': 3, 'worst': 3, 'hate': 3,
-      'useless': 2.5, 'waste': 2.5, 'disappointing': 2.5, 'pathetic': 2.5,
-      'bad': 2, 'poor': 2, 'wrong': 2, 'fail': 2, 'broken': 2,
-      'boring': 1.5, 'meh': 1, 'not': 1, 'no': 0.5, 'stupid': 2,
-      'sucks': 2, 'shit': 2.5, 'crap': 2, 'garbage': 2.5
-    };
-    
-    const intensifiers = {
-      'very': 1.5, 'extremely': 2, 'really': 1.3, 'totally': 1.4,
-      'absolutely': 1.8, 'completely': 1.6, 'quite': 1.2, 'so': 1.3
-    };
-    
-    const negations = ['not', 'no', 'never', 'nothing', 'nobody', 'neither', 'none'];
-    
-    const words = text.toLowerCase().match(/\b\w+\b/g) || [];
-    let positiveScore = 0;
-    let negativeScore = 0;
-    let totalWords = words.length;
-    
-    for (let i = 0; i < words.length; i++) {
-      const word = words[i];
-      let multiplier = 1;
-      let isNegated = false;
-      
-      // Check for intensifiers in previous word
-      if (i > 0 && intensifiers[words[i-1]]) {
-        multiplier = intensifiers[words[i-1]];
-      }
-      
-      // Check for negations in previous 2 words
-      for (let j = Math.max(0, i-2); j < i; j++) {
-        if (negations.includes(words[j])) {
-          isNegated = true;
-          break;
-        }
-      }
-      
-      if (positiveWords[word]) {
-        const score = positiveWords[word] * multiplier;
-        if (isNegated) {
-          negativeScore += score;
-        } else {
-          positiveScore += score;
-        }
-      } else if (negativeWords[word]) {
-        const score = negativeWords[word] * multiplier;
-        if (isNegated) {
-          positiveScore += score;
-        } else {
-          negativeScore += score;
-        }
-      }
-    }
-    
-    // Normalize scores based on text length
-    const lengthFactor = Math.max(1, totalWords / 10);
-    positiveScore = positiveScore / lengthFactor;
-    negativeScore = negativeScore / lengthFactor;
-    
-    const netScore = positiveScore - negativeScore;
-    const confidence = Math.min(1, (positiveScore + negativeScore) / 3);
-    
-    if (netScore > 0.5) {
-      return { sentiment: 'positive', score: Math.min(1, netScore / 2) };
-    } else if (netScore < -0.5) {
-      return { sentiment: 'negative', score: Math.max(-1, netScore / 2) };
-    } else {
-      return { sentiment: 'neutral', score: 0 };
-    }
-  }
-
   detectSpam(comment: Comment): boolean {
     const text = comment.textOriginal.toLowerCase();
     const spamIndicators = [
@@ -155,7 +169,8 @@ export class SentimentService {
     if (comment.likeCount === 0 && comment.textOriginal.length < 20) score -= 2;
     
     // Pattern-based penalties
-    const hasEmojis = /[\u{1F600}-\u{1F64F}]|[\u{1F300}-\u{1F5FF}]|[\u{1F680}-\u{1F6FF}]|[\u{1F1E0}-\u{1F1FF}]/gu.test(comment.textOriginal);
+    // Use a regex compatible with ES5 for emoji detection
+    const hasEmojis = /[\uD800-\uDBFF][\uDC00-\uDFFF]/.test(comment.textOriginal);
     const hasExcessivePunctuation = /[!]{3,}|[?]{3,}|[.]{3,}/.test(comment.textOriginal);
     const hasAllCaps = /^[A-Z\s!?.,]{10,}$/.test(comment.textOriginal);
     
@@ -166,8 +181,69 @@ export class SentimentService {
     return Math.max(0, Math.min(10, score));
   }
 
-  async analyzeComments(comments: Comment[]): Promise<InsertAnalysis> {
-    const totalComments = comments.length;
+  async analyzeComments(comments: Comment[], video?: Video): Promise<InsertAnalysis> {
+    // INTELLIGENT SAMPLING: Analyze more comments with smart strategies
+    const ANALYSIS_MODES = {
+      FAST: { maxComments: 150, batchSize: 30, strategy: 'top_engagement' },
+      BALANCED: { maxComments: 300, batchSize: 50, strategy: 'stratified' },
+      COMPREHENSIVE: { maxComments: 500, batchSize: 75, strategy: 'stratified' }
+    };
+    
+    // Choose mode based on comment count and user preference (default to BALANCED)
+    let mode = ANALYSIS_MODES.BALANCED;
+    if (comments.length < 200) {
+      mode = ANALYSIS_MODES.FAST;
+    } else if (comments.length > 1000) {
+      mode = ANALYSIS_MODES.COMPREHENSIVE;
+    }
+    
+    console.log(`Using ${mode.strategy} analysis mode: ${mode.maxComments} comments, batch size ${mode.batchSize}`);
+    
+    // Intelligent sampling based on strategy
+    let commentsToAnalyze: Comment[];
+    
+    if (mode.strategy === 'top_engagement') {
+      // Sort by engagement (likes + length + verified status)
+      commentsToAnalyze = comments
+        .sort((a, b) => {
+          const aScore = (a.likeCount || 0) + (a.textOriginal.length / 10) + (a.isVerified ? 10 : 0);
+          const bScore = (b.likeCount || 0) + (b.textOriginal.length / 10) + (b.isVerified ? 10 : 0);
+          return bScore - aScore;
+        })
+        .slice(0, mode.maxComments);
+    } else if (mode.strategy === 'stratified') {
+      // Stratified sampling: take top, middle, and random samples
+      const topCount = Math.floor(mode.maxComments * 0.4); // 40% top engagement
+      const middleCount = Math.floor(mode.maxComments * 0.4); // 40% middle engagement  
+      const randomCount = mode.maxComments - topCount - middleCount; // 20% random
+      
+      // Sort by engagement
+      const sortedComments = comments
+        .sort((a, b) => {
+          const aScore = (a.likeCount || 0) + (a.textOriginal.length / 10) + (a.isVerified ? 10 : 0);
+          const bScore = (b.likeCount || 0) + (b.textOriginal.length / 10) + (b.isVerified ? 10 : 0);
+          return bScore - aScore;
+        });
+      
+      const topComments = sortedComments.slice(0, topCount);
+      const middleComments = sortedComments.slice(
+        Math.floor(sortedComments.length * 0.3),
+        Math.floor(sortedComments.length * 0.3) + middleCount
+      );
+      
+      // Random sample from remaining comments
+      const remainingComments = sortedComments.slice(topCount + middleCount);
+      const randomComments = remainingComments
+        .sort(() => Math.random() - 0.5)
+        .slice(0, randomCount);
+      
+      commentsToAnalyze = [...topComments, ...middleComments, ...randomComments];
+    } else {
+      // Fallback to simple top sampling
+      commentsToAnalyze = comments.slice(0, mode.maxComments);
+    }
+    
+    const totalComments = commentsToAnalyze.length;
     let positiveCount = 0;
     let negativeCount = 0;
     let neutralCount = 0;
@@ -175,11 +251,59 @@ export class SentimentService {
     let spamCount = 0;
     let botLikeCount = 0;
     let verifiedCount = 0;
-    let totalTrustScore = 0;
+    let engagedComments = 0;
 
-    for (const comment of comments) {
-      // Analyze sentiment
-      const sentiment = this.analyzeSentiment(comment.textOriginal);
+    // Check if sentiment service is healthy
+    const serviceHealthy = await checkSentimentServiceHealth();
+    if (!serviceHealthy) {
+      console.log("Sentiment service not healthy, using fallback analysis...");
+    }
+
+    // Process with configurable batch size
+    const batchSize = mode.batchSize;
+    const texts = commentsToAnalyze.map(comment => comment.textOriginal);
+    let sentiments: { sentiment: string, score: number }[] = [];
+    
+    if (serviceHealthy) {
+      try {
+        // Process batches in parallel for optimal speed
+        const batches = [];
+    for (let i = 0; i < texts.length; i += batchSize) {
+          batches.push(texts.slice(i, i + batchSize));
+        }
+        
+        console.log(`Processing ${batches.length} batches in parallel (${texts.length} total texts)`);
+        
+        // Process all batches simultaneously
+        const batchPromises = batches.map(batch => analyzeSentimentsWithHuggingFace(batch));
+        const batchResults = await Promise.all(batchPromises);
+        
+        // Combine results
+        for (const batchResult of batchResults) {
+          sentiments = sentiments.concat(batchResult);
+        }
+        
+      } catch (error) {
+        console.error("Error in batch processing:", error);
+        console.log("Using fallback sentiment analysis...");
+        
+        // Use fallback sentiment analysis for each comment
+        sentiments = texts.map(text => simpleSentimentAnalysis(text));
+      }
+    } else {
+      // Service not healthy, use fallback immediately
+      console.log("Using fallback sentiment analysis (service not available)...");
+      sentiments = texts.map(text => simpleSentimentAnalysis(text));
+    }
+
+    // Ensure we have sentiments for all comments
+    while (sentiments.length < commentsToAnalyze.length) {
+      sentiments.push({ sentiment: "neutral", score: 0.5 });
+    }
+
+    for (let i = 0; i < commentsToAnalyze.length; i++) {
+      const comment = commentsToAnalyze[i];
+      const sentiment = sentiments[i] || { sentiment: "neutral", score: 0.5 }; // Fallback
       comment.sentiment = sentiment.sentiment;
       comment.sentimentScore = sentiment.score;
 
@@ -188,9 +312,8 @@ export class SentimentService {
       comment.isBotLike = this.detectBotBehavior(comment);
       comment.isSuspicious = comment.isSpam || comment.isBotLike;
 
-      // Calculate trust score
+      // Calculate trust score (legacy, not used for rating)
       comment.trustScore = this.calculateTrustScore(comment);
-      totalTrustScore += comment.trustScore;
 
       // Count categories
       if (comment.sentiment === 'positive') positiveCount++;
@@ -201,17 +324,70 @@ export class SentimentService {
       if (comment.isSpam) spamCount++;
       if (comment.isBotLike) botLikeCount++;
       if (comment.isVerified) verifiedCount++;
+      // Engagement: likes > 5 or word count > 15
+      const wordCount = comment.textOriginal.split(/\s+/).length;
+      if ((comment.likeCount || 0) > 5 || wordCount > 15) engagedComments++;
     }
 
-    const overallTrustScore = totalComments > 0 ? totalTrustScore / totalComments : 0;
-    
-    // Generate quality indicators
+    // --- REAL-WORLD RATING FORMULA (UPDATED) ---
+    const pos = positiveCount;
+    const neg = negativeCount;
+    const neu = neutralCount;
+    const total = pos + neu + neg;
+    let baseRating = 0;
+    let confidence = 0;
+    if (total > 0) {
+      // Weighted rating considering engagement and verification
+      let weightedPos = 0;
+      let weightedNeg = 0;
+      let weightedNeu = 0;
+      for (let i = 0; i < commentsToAnalyze.length; i++) {
+        const comment = commentsToAnalyze[i];
+        const weight = 1 + (comment.likeCount || 0) / 10 + (comment.isVerified ? 0.5 : 0);
+        if (comment.sentiment === 'positive') weightedPos += weight;
+        else if (comment.sentiment === 'negative') weightedNeg += weight;
+        else weightedNeu += weight;
+      }
+      const totalWeight = weightedPos + weightedNeu + weightedNeg;
+      // New formula: negative comments reduce score less
+      baseRating = ((weightedPos * 1) + (weightedNeu * 0.8) + (weightedNeg * -0.05)) / totalWeight * 5;
+      baseRating = Math.max(0, Math.min(5, baseRating));
+      baseRating = Math.round(baseRating * 100) / 100;
+      // Calculate confidence based on sample size and distribution
+      const sampleRatio = total / comments.length;
+      const distributionBalance = 1 - Math.abs(pos - neg) / total;
+      confidence = Math.min(1, sampleRatio * distributionBalance * (total / 100));
+    }
+    // --- ENGAGEMENT MODIFIER (UPDATED) ---
+    let engagementScore = 1.0;
+    if (video) {
+      const likeRatio = video.likeCount / Math.max(1, video.viewCount);
+      const commentRatio = video.commentCount / Math.max(1, video.viewCount);
+      // Like ratio scoring (updated)
+      let likeScore = 1.0;
+      if (likeRatio >= 0.05) likeScore = 1.25;
+      else if (likeRatio >= 0.02) likeScore = 1.15;
+      else if (likeRatio >= 0.01) likeScore = 1.05;
+      else likeScore = 1.0;
+      // Comment ratio scoring (updated)
+      let commentScore = 1.0;
+      if (commentRatio >= 0.005) commentScore = 1.2;
+      else if (commentRatio >= 0.001) commentScore = 1.1;
+      else if (commentRatio >= 0.0005) commentScore = 1.02;
+      else commentScore = 1.0;
+      engagementScore = (likeScore + commentScore) / 2;
+    }
+    // --- FINAL RATING ---
+    let rating = baseRating * engagementScore;
+      rating = Math.max(0, Math.min(5, rating));
+      rating = Math.round(rating * 100) / 100;
+    // --- END REAL-WORLD RATING FORMULA ---
+
+    // Generate quality indicators (unchanged)
     const qualityIndicators: QualityIndicator[] = [];
-    
     const spamPercentage = (spamCount / totalComments) * 100;
     const botPercentage = (botLikeCount / totalComments) * 100;
     const verifiedPercentage = (verifiedCount / totalComments) * 100;
-    
     if (spamPercentage < 5) {
       qualityIndicators.push({
         type: 'spam',
@@ -227,7 +403,6 @@ export class SentimentService {
         color: 'warning'
       });
     }
-    
     if (botPercentage < 5) {
       qualityIndicators.push({
         type: 'bot',
@@ -243,7 +418,6 @@ export class SentimentService {
         color: 'danger'
       });
     }
-    
     if (verifiedPercentage > 10) {
       qualityIndicators.push({
         type: 'verified',
@@ -252,9 +426,52 @@ export class SentimentService {
         color: 'success'
       });
     }
-    
+    // Add video engagement indicator (unchanged)
+    if (video) {
+      const likeViewRatio = video.likeCount / Math.max(1, video.viewCount);
+      if (likeViewRatio > 0.05) {
+        qualityIndicators.push({
+          type: 'engagement',
+          label: 'High Engagement',
+          icon: 'fas fa-thumbs-up',
+          color: 'success'
+        });
+      } else if (likeViewRatio < 0.01) {
+        qualityIndicators.push({
+          type: 'engagement',
+          label: 'Low Engagement',
+          icon: 'fas fa-thumbs-down',
+          color: 'warning'
+        });
+      }
+    }
+    // Engagement quality (unchanged)
+    let engagementQuality = "Unknown";
+    if (video) {
+      const likeViewRatio = video.likeCount / Math.max(1, video.viewCount);
+      const commentEngagementRatio = totalComments / Math.max(1, video.viewCount / 1000);
+      let likeScore = 0;
+      let commentScore = 0;
+      if (likeViewRatio >= 0.08) likeScore = 3;
+      else if (likeViewRatio >= 0.05) likeScore = 2;
+      else if (likeViewRatio >= 0.03) likeScore = 1;
+      else if (likeViewRatio >= 0.01) likeScore = 0;
+      else likeScore = -1;
+      if (commentEngagementRatio >= 1.0) commentScore = 3;
+      else if (commentEngagementRatio >= 0.5) commentScore = 2;
+      else if (commentEngagementRatio >= 0.2) commentScore = 1;
+      else if (commentEngagementRatio >= 0.1) commentScore = 0;
+      else commentScore = -1;
+      const totalEngagementScore = likeScore + commentScore;
+      if (totalEngagementScore >= 5) engagementQuality = "Exceptional";
+      else if (totalEngagementScore >= 3) engagementQuality = "Excellent";
+      else if (totalEngagementScore >= 1) engagementQuality = "Good";
+      else if (totalEngagementScore >= -1) engagementQuality = "Fair";
+      else if (totalEngagementScore >= -3) engagementQuality = "Poor";
+      else engagementQuality = "Very Poor";
+    }
     return {
-      videoId: comments[0]?.videoId || '',
+      videoId: commentsToAnalyze[0]?.videoId || '',
       totalComments,
       positiveCount,
       negativeCount,
@@ -263,8 +480,10 @@ export class SentimentService {
       spamCount,
       botLikeCount,
       verifiedCount,
-      overallTrustScore: Math.round(overallTrustScore * 10) / 10,
+      rating, // <-- enhanced weighted rating
+      confidence: confidence || 0, // <-- confidence level of the rating (with fallback)
       qualityIndicators,
+      engagementQuality,
     };
   }
 }

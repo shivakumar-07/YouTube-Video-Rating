@@ -12,9 +12,13 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  // Always include the user's API key from localStorage if present
+  const apiKey = typeof window !== 'undefined' ? localStorage.getItem("yt_api_key") : null;
+  const headers: Record<string, string> = data ? { "Content-Type": "application/json" } : {};
+  if (apiKey) headers["X-YouTube-API-Key"] = apiKey;
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });

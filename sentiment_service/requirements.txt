@@ -1,0 +1,14 @@
+fastapi
+uvicorn
+transformers
+torch 
+redis
+pydantic
+python-multipart
+scikit-learn
+pandas
+numpy
+datasets
+accelerate
+psutil
+requests 

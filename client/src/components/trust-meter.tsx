@@ -14,28 +14,52 @@ export default function TrustMeter({ score, className }: TrustMeterProps) {
   };
 
   const getProgressColor = (score: number) => {
-    if (score >= 8) return "bg-success";
-    if (score >= 6) return "bg-warning";
-    return "bg-danger";
+    if (score >= 8) return "bg-gradient-to-r from-green-500 to-green-600";
+    if (score >= 6) return "bg-gradient-to-r from-yellow-500 to-orange-500";
+    return "bg-gradient-to-r from-red-500 to-red-600";
+  };
+
+  const getScoreLabel = (score: number) => {
+    if (score >= 8) return "Excellent";
+    if (score >= 6) return "Good";
+    if (score >= 4) return "Fair";
+    return "Poor";
   };
 
   return (
     <div className={cn("", className)}>
       <div className="flex items-center justify-between mb-2">
-        <span className="text-sm font-medium text-gray-700">Trust Score</span>
-        <span className={cn("text-sm font-bold", getScoreColor(score))}>
-          {score.toFixed(1)}/10
+        <span className="text-xs font-semibold text-muted-foreground flex items-center gap-2">
+          <div className="w-1.5 h-1.5 bg-primary rounded-full animate-pulse"></div>
+          Rating
         </span>
+        <div className="flex items-center gap-2">
+          <span className={cn("text-xs font-bold transition-all duration-300", getScoreColor(score))}>
+            {score.toFixed(1)}/10
+          </span>
+          <span className={cn("text-xs font-medium px-2 py-0.5 rounded-full transition-all duration-300", 
+            score >= 8 ? "bg-success/10 text-success" :
+            score >= 6 ? "bg-warning/10 text-warning" :
+            score >= 4 ? "bg-orange-100 text-orange-700" :
+            "bg-danger/10 text-danger"
+          )}>
+            {getScoreLabel(score)}
+          </span>
+        </div>
       </div>
-      <div className="w-full bg-gray-200 rounded-full h-2 mb-1">
-        <div 
-          className={cn("h-2 rounded-full transition-all duration-300", getProgressColor(score))}
-          style={{ width: `${score * 10}%` }}
-        />
+      <div className="relative">
+        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+          <div 
+            className={cn("h-2 rounded-full transition-all duration-1000 ease-out shadow-sm", getProgressColor(score))}
+            style={{ width: `${score * 10}%` }}
+          ></div>
+        </div>
+        <div className="absolute -top-1 left-0 w-1 h-4 bg-border rounded-full"></div>
+        <div className="absolute -top-1 right-0 w-1 h-4 bg-border rounded-full"></div>
       </div>
-      <div className="flex justify-between text-xs text-gray-500">
-        <span>Low Trust</span>
-        <span>High Trust</span>
+      <div className="flex justify-between text-xs text-muted-foreground mt-1">
+        <span className="font-medium">Low</span>
+        <span className="font-medium">High</span>
       </div>
     </div>
   );

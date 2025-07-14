@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,23 +7,30 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { apiRequest } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Video } from "@shared/schema";
+import { useYTApiKey } from "@/App";
 
 interface VideoSearchProps {
   onSearch: (results: Video[]) => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
+  maxResults: string;
+  setMaxResults: (results: string) => void;
+  order: string;
+  setOrder: (order: string) => void;
+  onClearSelection?: () => void;
 }
 
-export default function VideoSearch({ onSearch }: VideoSearchProps) {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [maxResults, setMaxResults] = useState("10");
-  const [order, setOrder] = useState("relevance");
+export default function VideoSearch({ onSearch, searchQuery, setSearchQuery, maxResults, setMaxResults, order, setOrder, onClearSelection }: VideoSearchProps) {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
+  const { apiKey, setApiKey } = useYTApiKey();
 
   const handleSearch = async () => {
-    if (!searchQuery.trim()) {
+    const localApiKey = apiKey || localStorage.getItem("yt_api_key") || "";
+    if (!searchQuery.trim() || !localApiKey) {
       toast({
         title: "Error",
-        description: "Please enter a search query",
+        description: "Please enter a search query and ensure your YouTube API key is set.",
         variant: "destructive",
       });
       return;
@@ -31,21 +38,41 @@ export default function VideoSearch({ onSearch }: VideoSearchProps) {
 
     setIsLoading(true);
     try {
-      const response = await apiRequest(
-        "GET",
-        `/api/videos/search?q=${encodeURIComponent(searchQuery)}&maxResults=${parseInt(maxResults)}&order=${order}`
-      );
-      const results = await response.json();
-      onSearch(results);
+      const response = await fetch(`/api/videos/search?q=${encodeURIComponent(searchQuery)}&maxResults=${maxResults}&order=${order}`, {
+        headers: {
+          "X-YouTube-API-Key": localApiKey,
+        },
+      });
+      if (!response.ok) {
+        toast({
+          title: "API Error",
+          description: "Invalid or expired API key. Please enter a valid YouTube Data API v3 key.",
+          variant: "destructive",
+        });
+        setApiKey(""); // This will prompt the user to re-enter their key
+        return;
+      }
+      const data = await response.json();
+      if (data.message && data.message.toLowerCase().includes("api key")) {
+        toast({
+          title: "API Error",
+          description: data.message,
+          variant: "destructive",
+        });
+        setApiKey("");
+        return;
+      }
+      onClearSelection?.();
+      onSearch(data);
       toast({
         title: "Success",
-        description: `Found ${results.length} videos`,
+        description: `Found ${data.length} videos`,
       });
     } catch (error) {
       console.error("Search error:", error);
       toast({
-        title: "Error",
-        description: "Failed to search videos. Please check your YouTube API key.",
+        title: "Network Error",
+        description: "Failed to fetch videos. Please check your connection and try again.",
         variant: "destructive",
       });
     } finally {
@@ -59,37 +86,41 @@ export default function VideoSearch({ onSearch }: VideoSearchProps) {
     }
   };
 
+  // Auto-trigger search when searchQuery, maxResults, or order changes
+  useEffect(() => {
+    if (searchQuery.trim() && apiKey) {
+      handleSearch();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchQuery, maxResults, order]);
+
   return (
     <div className="mb-8">
-      <Card>
+      <Card className="card border-0 shadow-lg">
         <CardContent className="pt-6">
-          <h2 className="text-lg font-semibold text-gray-900 mb-4">Search YouTube Videos</h2>
+          <h2 className="text-lg font-bold text-card-foreground mb-4 flex items-center gap-2">
+            <div className="w-2 h-2 bg-primary rounded-full animate-pulse"></div>
+            Search YouTube Videos
+          </h2>
           <div className="flex space-x-4">
             <div className="flex-1">
-              <div className="relative">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+              <div className="relative group">
+                <Search className="absolute left-3 top-3 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors duration-200" />
                 <Input
                   type="text"
                   placeholder="Search for videos by topic, keyword, or channel..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   onKeyPress={handleKeyPress}
-                  className="pl-10"
+                  className="pl-10 border-border bg-muted text-card-foreground focus:border-primary focus:ring-primary transition-all duration-200"
                 />
+                {isLoading && <div className="absolute right-3 top-3 w-4 h-4 animate-spin border-2 border-primary border-t-transparent rounded-full"></div>}
               </div>
             </div>
-            <Button 
-              onClick={handleSearch} 
-              disabled={isLoading}
-              className="bg-primary text-white hover:bg-blue-700"
-            >
-              <Search className="w-4 h-4 mr-2" />
-              {isLoading ? "Searching & Analyzing..." : "Search"}
-            </Button>
           </div>
           <div className="mt-4 flex space-x-4">
             <Select value={maxResults} onValueChange={setMaxResults}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48 border-border bg-muted text-card-foreground focus:border-primary focus:ring-primary transition-all duration-200">
                 <SelectValue placeholder="Results count" />
               </SelectTrigger>
               <SelectContent>
@@ -102,7 +133,7 @@ export default function VideoSearch({ onSearch }: VideoSearchProps) {
               </SelectContent>
             </Select>
             <Select value={order} onValueChange={setOrder}>
-              <SelectTrigger className="w-48">
+              <SelectTrigger className="w-48 border-border bg-muted text-card-foreground focus:border-primary focus:ring-primary transition-all duration-200">
                 <SelectValue placeholder="Sort by" />
               </SelectTrigger>
               <SelectContent>
