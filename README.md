@@ -1,80 +1,64 @@
-<<<<<<< HEAD
-# YouTube-Video-Rating
-=======
-# YouTube Comment Sentiment Analyzer
+# How to Run Locally
 
-A web application that analyzes YouTube video comments to provide sentiment analysis and quality ratings.
+This project consists of a React frontend, a Node.js backend, and a Python sentiment analysis service.
 
-## Features
+## Prerequisites
+- Node.js (v16+ recommended)
+- Python 3.8+
+- npm and pip
+- (Optional) Docker & Docker Compose
 
-- 🔍 Search YouTube videos
-- 📊 Sentiment analysis of comments
-- 🎯 Quality ratings and trust scores
-- 📱 Mobile-responsive design
-- ⚡ Fast and accurate analysis
-
-## Tech Stack
-
-- **Frontend**: React + TypeScript + Tailwind CSS
-- **Backend**: Node.js + Express
-- **AI**: Python FastAPI + Hugging Face models
-- **Database**: In-memory caching
-
-## Free Deployment
-
-### Option 1: Vercel (Recommended)
-
-1. **Push to GitHub**
-   ```bash
-   git add .
-   git commit -m "Ready for deployment"
-   git push origin main
-   ```
-
-2. **Deploy to Vercel**
-   - Go to [vercel.com](https://vercel.com)
-   - Sign up with GitHub
-   - Import your repository
-   - Deploy automatically
-
-3. **Environment Variables**
-   - Add your YouTube API key in Vercel dashboard
-   - Set `YOUTUBE_API_KEY` environment variable
-
-### Option 2: Netlify
-
-1. **Build the project**
-   ```bash
-   npm run build
-   ```
-
-2. **Deploy to Netlify**
-   - Go to [netlify.com](https://netlify.com)
-   - Drag and drop the `dist` folder
-   - Get your live URL instantly
-
-## Local Development
-
+## 1. Clone the Repository
 ```bash
-# Install dependencies
+git clone <your-repo-url>
+cd yt_cmnt_sentiment
+```
+
+## 2. Install Dependencies
+### Frontend
+```bash
+cd client
 npm install
+```
+### Backend
+```bash
+cd ../server
+npm install
+```
+### Sentiment Service
+```bash
+cd ../sentiment_service
+pip install -r requirements.txt
+```
 
-# Start development server
-npm run dev
-
-# Start Python sentiment service
+## 3. Start the Services
+### Start Sentiment Service (Python)
+```bash
 cd sentiment_service
 python main.py
 ```
+### Start Backend (Node.js)
+```bash
+cd ../server
+npm run dev
+```
+### Start Frontend (React)
+```bash
+cd ../client
+npm run dev
+```
 
-## Mobile & Desktop Support
+## 4. Open the App
+Go to [http://localhost:5173](http://localhost:5173) in your browser.
 
-✅ **Fully responsive design**
-✅ **Works on all devices**
-✅ **Touch-friendly interface**
-✅ **Fast loading times**
+## 5. YouTube API Key
+The app will prompt you for a YouTube Data API key on first use. If you don't have one, follow this guide: [How to get a YouTube API key](https://youtu.be/fXPuQY1LKbY?feature=shared)
 
-## License
+## Optional: Run Everything with Docker Compose
+```bash
+docker-compose up --build
+```
 
-MIT License - Free to use and modify 
->>>>>>> e2cf560 (Initial Commit of files)
+---
+
+**You're ready to use the app locally!**
