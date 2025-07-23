@@ -175,146 +175,150 @@ export default function VideoCard({ video, onAnalyze, rating, ratingLoading, ana
   const safeThumbnail = video.thumbnailUrl || "/api/placeholder/160/90";
 
   return (
-    <div
-      className="flex flex-col group hover:shadow-2xl hover:-translate-y-1 transition-all duration-200 ease-in-out overflow-hidden relative bg-[#212121] rounded-xl shadow-md"
-      style={{ width: 360, minWidth: 360, maxWidth: 360, border: 'none', padding: 0, borderRadius: 12, fontFamily: 'Roboto, Arial, sans-serif', boxShadow: '0 2px 8px 0 rgba(0,0,0,0.12)' }}
-    >
-      {/* Thumbnail */}
-          <a
-            href={`https://www.youtube.com/watch?v=${video.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
-            tabIndex={0}
-        aria-label={`Watch ${safeTitle} on YouTube`}
-        className="relative overflow-hidden group-hover:scale-105 transition-transform duration-300"
-        style={{ width: 360, aspectRatio: '16/9', borderRadius: 12, margin: 0, display: 'block', background: '#181818' }}
-          >
-            <img 
-          src={safeThumbnail}
-          alt={safeTitle}
-          className="w-full h-full object-cover rounded-xl hover:opacity-90 transition-opacity duration-200 cursor-pointer"
-          style={{ width: '100%', height: '100%', borderRadius: 12, aspectRatio: '16/9', display: 'block' }}
-          onError={(e) => {
-            // Fallback to placeholder if image fails to load
-            const target = e.target as HTMLImageElement;
-            target.src = "/api/placeholder/160/90";
-          }}
-            />
-        <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-300 rounded-xl"></div>
-          </a>
-
-          {/* Info Section */}
-      <div className="flex flex-col justify-between min-w-0 px-3 pt-2 pb-2" style={{height: 'auto', flex: 1, paddingTop: 8, paddingBottom: 8}}>
-        <div className="flex flex-row items-center justify-between min-h-0">
-          <div className="flex-1 min-w-0">
-            {/* Title */}
-              <a
-                href={`https://www.youtube.com/watch?v=${video.id}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                tabIndex={0}
-              aria-label={`Watch ${safeTitle} on YouTube`}
-                className="hover:underline cursor-pointer group"
-              >
-              <h3 className="font-semibold text-white mb-0 text-[1rem] leading-tight group-hover:text-primary transition-colors duration-200 line-clamp-2" style={{ maxHeight: '2.7em', overflow: 'hidden', textOverflow: 'ellipsis', fontWeight: 600, fontSize: '1rem', lineHeight: 1.2, marginBottom: 2 }}>
-                {safeTitle}
-                </h3>
-              </a>
-            {/* Channel name row */}
-              <a
-              href={`https://www.youtube.com/channel/${video.channelId || 'UC'}`}
-                target="_blank"
-                rel="noopener noreferrer"
-              className="text-xs text-[#aaa] hover:underline truncate block max-w-full mt-0.5"
-              aria-label={`Visit ${safeChannelTitle} channel on YouTube`}
-              style={{ fontWeight: 500, margin: 0, padding: 0, lineHeight: 1.2, maxWidth: '100%', fontSize: '0.92rem', color: '#aaa', marginBottom: 2 }}
-              >
-              {safeChannelTitle}
-              </a>
-            {/* Meta row */}
-            <div className="flex flex-wrap items-center text-xs text-[#aaa] gap-x-2 gap-y-0.5 mt-0.5" style={{ fontSize: '0.9rem', lineHeight: 1.2, color: '#aaa', marginBottom: 2 }}>
-                <span>{formatNumber(video.viewCount)} views</span>
-              <span>• {formatDate(video.publishedAt)}</span>
+    <Card className="video-card group">
+      <CardContent className="p-0">
+        {/* Video Thumbnail */}
+        <div className="relative">
+          <img 
+            src={video.thumbnailUrl} 
+            alt={video.title}
+            className="video-thumbnail w-full h-40 sm:h-48 object-cover rounded-t-xl"
+          />
+          
+          {/* Duration overlay if available */}
+          {video.duration && (
+            <div className="absolute bottom-2 right-2 bg-black/80 text-white text-xs px-2 py-1 rounded">
+              {video.duration}
             </div>
-            {/* Metrics row: only show if at least one metric is present */}
-            {(video.likeCount !== undefined && video.likeCount !== null) || (video.commentCount !== undefined && video.commentCount !== null) || (typeof rating === 'number') ? (
-              <div className="flex flex-row items-center gap-x-2 text-xs text-[#aaa] mt-1" style={{ fontSize: '0.93rem', lineHeight: 1.2, marginTop: 6 }}>
-                {/* Likes (YouTube thumbs up PNG from public) */}
-                <span className="flex items-center gap-1">
-                  <img src="/like-icon.png" alt="Like" width={18} height={18} style={{display:'inline-block',verticalAlign:'middle'}} />
-                  {(video.likeCount !== undefined && video.likeCount !== null) ? (
-                    <span className="font-bold text-white" style={{fontSize:'1rem',marginLeft:2}}>{formatNumber(video.likeCount)}</span>
-                  ) : (
-                    <span className="font-bold" style={{fontSize:'1rem',marginLeft:2, color:'#888'}}>N/A</span>
-                  )}
-                </span>
-                {/* Comments (chat bubble) */}
-                <span className="flex items-center gap-1">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#aaa" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
-                  {(video.commentCount !== undefined && video.commentCount !== null) ? (
-                    <span className="font-bold text-white" style={{fontSize:'1rem',marginLeft:2}}>{formatNumber(video.commentCount)}</span>
-                  ) : (
-                    <span className="font-bold" style={{fontSize:'1rem',marginLeft:2, color:'#888'}}>N/A</span>
-                  )}
-                </span>
-                {/* Rating (star) */}
-                <span className="flex items-center gap-1">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill={typeof rating === 'number' ? (rating >= 3.5 ? '#FFD700' : rating > 0 ? '#e53935' : '#888') : '#888'} stroke={typeof rating === 'number' ? (rating >= 3.5 ? '#FFD700' : rating > 0 ? '#e53935' : '#888') : '#888'} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>
-                    {ratingLoading ? (
-                    <span className="animate-spin inline-block w-3 h-3 border-2 border-[#e53935] border-t-transparent rounded-full"></span>
-                  ) : typeof rating === 'number' ? (
-                    <span className="font-bold" style={{ color: (rating >= 3.5 ? '#FFD700' : rating > 0 ? '#e53935' : '#888'), fontSize:'1rem',marginLeft:2 }}>{rating.toFixed(2)}</span>
-                  ) : (
-                    <span className="font-bold" style={{fontSize:'1rem',marginLeft:2, color:'#888'}}>N/A</span>
-                  )}
-                  </span>
-              </div>
-            ) : null}
-          </div>
-          {/* 3-dot menu vertically centered with thumbnail */}
-          <div className="flex items-center h-full pl-2">
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 p-0 text-[#aaa]">
-                    <MoreVertical className="w-5 h-5" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem asChild>
-                    <a href={`https://www.youtube.com/watch?v=${video.id}`} target="_blank" rel="noopener noreferrer">
-                      Open on YouTube
-                    </a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => navigator.clipboard.writeText(`https://www.youtube.com/watch?v=${video.id}`)}>
-                    Share
-                  </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => analyzeMutation.mutate()} disabled={analyzeMutation.isPending || isAnalyzing}>
-                    {analyzeMutation.isPending || isAnalyzing ? (
-                      <span className="flex items-center gap-2"><RefreshCw className="w-3 h-3 animate-spin" /> Analyzing...</span>
-                    ) : (
-                      <span>Deep Analysis</span>
-                    )}
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
+          )}
+          
+          {/* Rating overlay */}
+          {displayAnalysisResult?.rating && (
+            <div className="absolute top-2 right-2">
+              <TrustMeter 
+                rating={displayAnalysisResult.rating} 
+                size="sm"
+                showLabel={false}
+              />
             </div>
+          )}
         </div>
-            {/* Trust Analysis Section (collapsible/overlay) */}
-        {displayAnalysisResult && (
-              <div className="animate-in slide-in-from-bottom-2 duration-300 mt-2 flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="#FF0000" viewBox="0 0 20 20" width="18" height="18" className="inline-block"><path d="M10 15l-5.878 3.09 1.122-6.545L.488 6.91l6.561-.955L10 0l2.951 5.955 6.561.955-4.756 4.635 1.122 6.545z"/></svg>
-            <span className="text-lg font-bold text-primary">{displayAnalysisResult.rating.toFixed(2)} / 5</span>
-              </div>
-            )}
-            {(analyzeMutation.isPending || isAnalyzing) && (
-          <div className="text-center py-2 text-muted-foreground">
-                <div className="flex items-center justify-center gap-2">
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary"></div>
-                  <span className="text-sm animate-pulse">Analyzing comments...</span>
+
+        {/* Content */}
+        <div className="p-4 space-y-3">
+          {/* Title and Channel */}
+          <div className="space-y-2">
+            <h3 className="font-semibold text-sm sm:text-base leading-tight line-clamp-2 group-hover:text-red-400 transition-colors">
+              {video.title}
+            </h3>
+            <p className="text-gray-400 text-xs sm:text-sm font-medium">
+              {video.channelTitle}
+            </p>
+          </div>
+
+          {/* Stats */}
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-1">
+                👁️ {formatNumber(video.viewCount || 0)}
+              </span>
+              <span className="flex items-center gap-1">
+                👍 {formatNumber(video.likeCount || 0)}
+              </span>
+              <span className="flex items-center gap-1">
+                💬 {formatNumber(video.commentCount || 0)}
+              </span>
+            </div>
+            <span>{formatDate(video.publishedAt)}</span>
+          </div>
+
+          {/* Analysis Result */}
+          {displayAnalysisResult && (
+            <div className="space-y-3">
+              {/* Rating */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-300">Trust Score:</span>
+                  <TrustMeter rating={displayAnalysisResult.rating} size="sm" />
                 </div>
               </div>
+
+              {/* Quality Indicators */}
+              {renderQualityIndicators()}
+
+              {/* Summary */}
+              {displayAnalysisResult.summary && (
+                <div className="bg-gray-800/50 rounded-lg p-3">
+                  <p className="text-xs text-gray-300 leading-relaxed">
+                    {displayAnalysisResult.summary}
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Action Buttons */}
+          <div className="flex items-center gap-2 pt-2">
+            {!displayAnalysisResult ? (
+              <Button
+                onClick={() => analyzeMutation.mutate()}
+                disabled={isAnalyzing || analyzeMutation.isPending}
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 disabled:opacity-50"
+                size="sm"
+              >
+                {isAnalyzing || analyzeMutation.isPending ? (
+                  <>
+                    <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                    Analyzing...
+                  </>
+                ) : (
+                  <>
+                    🔍 Analyze Video
+                  </>
+                )}
+              </Button>
+            ) : (
+              <Button
+                onClick={() => onAnalyze(video, displayAnalysisResult)}
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200"
+                size="sm"
+              >
+                📊 View Details
+              </Button>
             )}
-      </div>
-    </div>
+            
+            {/* More options */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="w-10 h-10 p-0 hover:bg-gray-800 rounded-lg"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="bg-gray-900 border-gray-700">
+                <DropdownMenuItem 
+                  onClick={() => window.open(`https://youtube.com/watch?v=${video.id}`, '_blank')}
+                  className="text-gray-300 hover:text-white hover:bg-gray-800 cursor-pointer"
+                >
+                  🔗 Open on YouTube
+                </DropdownMenuItem>
+                {displayAnalysisResult && (
+                  <DropdownMenuItem 
+                    onClick={() => analyzeMutation.mutate()}
+                    disabled={isAnalyzing || analyzeMutation.isPending}
+                    className="text-gray-300 hover:text-white hover:bg-gray-800 cursor-pointer"
+                  >
+                    🔄 Re-analyze
+                  </DropdownMenuItem>
+                )}
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+      </CardContent>
+    </Card>
   );
 }

@@ -61,6 +61,7 @@ function YTApiKeyProvider({ children }: { children: React.ReactNode }) {
 function UserProfile({ apiKey, onChangeApiKey }: { apiKey: string, onChangeApiKey: () => void }) {
   const [open, setOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+  
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
@@ -70,96 +71,121 @@ function UserProfile({ apiKey, onChangeApiKey }: { apiKey: string, onChangeApiKe
     if (open) document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [open]);
+
   // Logout handler
   const handleLogout = () => {
     try {
       localStorage.removeItem("yt_api_key");
-      sessionStorage.clear(); // Also clear session storage
+      sessionStorage.clear();
     } catch (error) {
       console.error('Error during logout:', error);
-      // Continue with reload even if storage clearing fails
     }
     window.location.reload();
   };
+
+  const copyApiKey = async () => {
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      setOpen(false);
+    } catch (error) {
+      console.error('Failed to copy API key:', error);
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = apiKey;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        setOpen(false);
+      } catch (fallbackError) {
+        console.error('Fallback copy also failed:', fallbackError);
+      }
+    }
+  };
+
   return (
-    <div style={{ position: "fixed", top: 10, right: 10, zIndex: 10001 }}>
+    <div className="fixed top-4 right-4 z-[10001]">
       <button
-        className="bg-gray-200 hover:bg-gray-300 text-xs px-3 py-1 rounded shadow flex items-center justify-center"
-        onClick={() => setOpen((v) => !v)}
+        className="flex items-center justify-center w-12 h-12 sm:w-14 sm:h-14 bg-gray-800/90 hover:bg-gray-700 backdrop-blur-sm rounded-full shadow-lg border border-gray-600/50 transition-all duration-200 touch-target"
+        onClick={() => setOpen(v => !v)}
         aria-label="User Profile"
-        style={{ width: 48, height: 48 }} // 50% larger
       >
-        <span role="img" aria-label="user" style={{ fontSize: 36 }}>👤</span>
+        <span className="text-2xl sm:text-3xl" role="img" aria-label="user">👤</span>
         {/* API key status indicator */}
         <span
-          style={{
-            display: 'inline-block',
-            width: 12,
-            height: 12,
-            borderRadius: '50%',
-            background: apiKey ? '#22c55e' : '#ef4444',
-            marginLeft: 6,
-            border: '2px solid #fff',
-            boxShadow: '0 0 0 2px #8882',
-          }}
+          className={`absolute -top-1 -right-1 w-4 h-4 rounded-full border-2 border-gray-900 ${
+            apiKey ? 'bg-green-500' : 'bg-red-500'
+          }`}
           title={apiKey ? 'API Key Connected' : 'API Key Not Set'}
         />
       </button>
+
       {open && (
-        <div ref={dropdownRef} className="bg-white border rounded shadow p-4 mt-2 min-w-[220px]">
-          <div className="mb-2 text-xs text-gray-600 flex items-center gap-2">
-            YouTube API Key:
-            <span
-              style={{
-                display: 'inline-block',
-                width: 10,
-                height: 10,
-                borderRadius: '50%',
-                background: apiKey ? '#22c55e' : '#ef4444',
-                border: '1.5px solid #fff',
-              }}
-              title={apiKey ? 'API Key Connected' : 'API Key Not Set'}
-            />
-            <span className={apiKey ? 'text-green-600 font-bold' : 'text-red-600 font-bold'}>
-              {apiKey ? 'Connected' : 'Not Set'}
-            </span>
+        <>
+          {/* Mobile overlay */}
+          <div className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[-1] md:hidden" onClick={() => setOpen(false)} />
+          
+          <div
+            ref={dropdownRef}
+            className="absolute top-16 right-0 w-80 max-w-[calc(100vw-2rem)] bg-gray-900/95 backdrop-blur-xl rounded-xl shadow-2xl border border-gray-700/50 animate-in"
+          >
+            {/* Header */}
+            <div className="p-4 border-b border-gray-700/50">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm font-medium text-gray-300">API Status:</span>
+                  <div className="flex items-center gap-2">
+                    <span
+                      className={`w-2 h-2 rounded-full ${apiKey ? 'bg-green-500' : 'bg-red-500'}`}
+                    />
+                    <span className={`text-sm font-semibold ${apiKey ? 'text-green-400' : 'text-red-400'}`}>
+                      {apiKey ? 'Connected' : 'Not Set'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              {/* API Key Display */}
+              <div className="bg-gray-800/50 rounded-lg p-3">
+                <div className="text-xs text-gray-400 mb-1">Current API Key:</div>
+                <div className="font-mono text-sm text-gray-300 truncate">
+                  {apiKey ? `${apiKey.slice(0, 8)}...${apiKey.slice(-8)}` : "Not set"}
+                </div>
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="p-4 space-y-2">
+              {apiKey && (
+                <button
+                  onClick={copyApiKey}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-blue-400 hover:text-blue-300 hover:bg-blue-900/20 rounded-lg transition-all"
+                >
+                  <span>📋</span>
+                  Copy API Key
+                </button>
+              )}
+              
+              <button
+                onClick={() => { setOpen(false); onChangeApiKey(); }}
+                className="w-full flex items-center gap-3 px-3 py-2 text-sm text-white hover:bg-gray-800 rounded-lg transition-all"
+              >
+                <span>🔑</span>
+                Change API Key
+              </button>
+              
+              <div className="border-t border-gray-700/50 pt-2 mt-3">
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-3 px-3 py-2 text-sm text-red-400 hover:text-red-300 hover:bg-red-900/20 rounded-lg transition-all"
+                >
+                  <span>🚪</span>
+                  Logout & Clear Data
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="mb-2 font-mono text-sm bg-gray-100 p-1 rounded select-all" style={{ color: '#222', background: '#f3f4f6' }}>
-            {apiKey ? apiKey.slice(0, 4) + "****" + apiKey.slice(-4) : "Not set"}
-          </div>
-          <button
-            className="text-xs text-blue-600 underline mb-2"
-            onClick={async () => { 
-              try {
-                await navigator.clipboard.writeText(apiKey);
-                setOpen(false);
-              } catch (error) {
-                console.error('Failed to copy API key:', error);
-                // Fallback: try to copy using a temporary textarea
-                try {
-                  const textArea = document.createElement('textarea');
-                  textArea.value = apiKey;
-                  document.body.appendChild(textArea);
-                  textArea.select();
-                  document.execCommand('copy');
-                  document.body.removeChild(textArea);
-                  setOpen(false);
-                } catch (fallbackError) {
-                  console.error('Fallback copy also failed:', fallbackError);
-                }
-              }
-            }}
-            disabled={!apiKey}
-          >Copy API Key</button>
-          <button
-            className="block w-full bg-blue-600 text-white px-2 py-1 rounded text-xs mt-2"
-            onClick={() => { setOpen(false); onChangeApiKey(); }}
-          >Change API Key</button>
-          <button
-            className="block w-full bg-red-600 text-white px-2 py-1 rounded text-xs mt-4 hover:bg-red-700"
-            onClick={handleLogout}
-          >Logout</button>
-        </div>
+        </>
       )}
     </div>
   );
@@ -168,6 +194,13 @@ function UserProfile({ apiKey, onChangeApiKey }: { apiKey: string, onChangeApiKe
 function ApiKeyModal({ setApiKey, onClose, canClose }: { setApiKey: (key: string) => void, onClose: () => void, canClose: boolean }) {
   const [input, setInput] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  
+  const testApiKeys = [
+    "AIzaSyB5UKhMFBcaxkoQIc4yHqsUwfjWG294QT8",
+    "AIzaSyAKmmSXOyaCn2fNKWAu0mXXLMRFm5ITH44"
+  ];
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (input) {
@@ -178,142 +211,138 @@ function ApiKeyModal({ setApiKey, onClose, canClose }: { setApiKey: (key: string
       setError("Please enter a valid YouTube API key.");
     }
   };
+
+  const copyApiKey = async (apiKey: string) => {
+    try {
+      await navigator.clipboard.writeText(apiKey);
+      setCopiedKey(apiKey);
+      setTimeout(() => setCopiedKey(null), 2000);
+    } catch (error) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea');
+      textArea.value = apiKey;
+      document.body.appendChild(textArea);
+      textArea.select();
+      document.execCommand('copy');
+      document.body.removeChild(textArea);
+      setCopiedKey(apiKey);
+      setTimeout(() => setCopiedKey(null), 2000);
+    }
+  };
+
+  const useTestKey = (apiKey: string) => {
+    setInput(apiKey);
+  };
+
   return (
-    <div style={{ position: "fixed", top: 0, left: 0, width: "100vw", height: "100vh", background: "linear-gradient(135deg, #181818 0%, #232323 100%)", zIndex: 10000, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div style={{ background: "#181818", padding: 36, borderRadius: 16, minWidth: 380, maxWidth: 440, position: "relative", boxShadow: "0 8px 32px 0 #0008", border: '1.5px solid #303030' }}>
+    <div className="fixed inset-0 bg-gradient-to-br from-gray-900 via-black to-gray-900 z-[10000] flex items-center justify-center p-4">
+      <div className="bg-gray-900/95 backdrop-blur-xl rounded-2xl w-full max-w-md mx-auto shadow-2xl border border-gray-700/50">
+        {canClose && (
           <button
             onClick={onClose}
-          style={{ position: "absolute", top: 12, right: 12, fontSize: 28, background: "none", border: "none", cursor: "pointer", color: '#fff', fontWeight: 700, zIndex: 10 }}
+            className="absolute top-4 right-4 text-gray-400 hover:text-white text-2xl font-bold z-10 w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-800/50 transition-all"
             aria-label="Close"
           >
             ×
           </button>
-        {/* YouTube-style Hero Section */}
-        <div style={{ textAlign: 'center', marginBottom: 28 }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', marginBottom: 10 }}>
-            <span style={{ fontSize: 38, fontWeight: 900, color: '#FF0000', marginRight: 8, letterSpacing: '-2px' }}>▶</span>
-            <span style={{ fontSize: 28, fontWeight: 800, color: '#fff', letterSpacing: '-1px', fontFamily: 'Roboto, Arial, sans-serif' }}>YouTube Rating Analyzer</span>
-          </div>
-          <div style={{ fontSize: 18, fontWeight: 500, marginBottom: 10, color: '#fff' }}>Unbiased, AI-powered video quality ratings</div>
-          <ul style={{ textAlign: 'left', margin: '0 auto 18px auto', maxWidth: 340, color: '#f1f1f1', fontSize: 15, lineHeight: 1.7, background: '#232323', borderRadius: 8, padding: 16, boxShadow: '0 2px 8px #0002' }}>
-            <li>• Analyze YouTube videos using real comments and engagement</li>
-            <li>• Get trustworthy ratings, not just view counts</li>
-            <li>• No account or history required—your privacy is protected</li>
-            <li>• Works with your own YouTube Data API key</li>
-          </ul>
-          
-          {/* Test API Keys Section */}
-          <div style={{ background: '#1a1a1a', borderRadius: 8, padding: 16, marginBottom: 16, border: '1px solid #444' }}>
-            <div style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Test the site with these API keys:</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {/* First API Key */}
-              <div style={{ display: 'flex', alignItems: 'center', background: '#2a2a2a', borderRadius: 6, padding: 8 }}>
-                <code style={{ 
-                  flex: 1, 
-                  fontSize: 12, 
-                  color: '#e5e5e5', 
-                  fontFamily: 'monospace', 
-                  wordBreak: 'break-all',
-                  marginRight: 8
-                }}>
-                  AIzaSyB5UKhMFBcaxkoQIc4yHqsUwfjWG294QT8
-                </code>
-                <button
-                  onClick={() => {
-                    const apiKey = 'AIzaSyB5UKhMFBcaxkoQIc4yHqsUwfjWG294QT8';
-                    navigator.clipboard.writeText(apiKey).then(() => {
-                      // Optional: Add visual feedback here
-                    }).catch(() => {
-                      // Fallback for older browsers
-                      const textArea = document.createElement('textarea');
-                      textArea.value = apiKey;
-                      document.body.appendChild(textArea);
-                      textArea.select();
-                      document.execCommand('copy');
-                      document.body.removeChild(textArea);
-                    });
-                  }}
-                  style={{
-                    background: '#4CAF50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    padding: '4px 8px',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    minWidth: 50
-                  }}
-                  title="Copy API key"
-                >
-                  Copy
-                </button>
-              </div>
-              
-              {/* Second API Key */}
-              <div style={{ display: 'flex', alignItems: 'center', background: '#2a2a2a', borderRadius: 6, padding: 8 }}>
-                <code style={{ 
-                  flex: 1, 
-                  fontSize: 12, 
-                  color: '#e5e5e5', 
-                  fontFamily: 'monospace', 
-                  wordBreak: 'break-all',
-                  marginRight: 8
-                }}>
-                  AIzaSyAKmmSXOyaCn2fNKWAu0mXXLMRFm5ITH44
-                </code>
-                <button
-                  onClick={() => {
-                    const apiKey = 'AIzaSyAKmmSXOyaCn2fNKWAu0mXXLMRFm5ITH44';
-                    navigator.clipboard.writeText(apiKey).then(() => {
-                      // Optional: Add visual feedback here
-                    }).catch(() => {
-                      // Fallback for older browsers
-                      const textArea = document.createElement('textarea');
-                      textArea.value = apiKey;
-                      document.body.appendChild(textArea);
-                      textArea.select();
-                      document.execCommand('copy');
-                      document.body.removeChild(textArea);
-                    });
-                  }}
-                  style={{
-                    background: '#4CAF50',
-                    color: 'white',
-                    border: 'none',
-                    borderRadius: 4,
-                    padding: '4px 8px',
-                    fontSize: 11,
-                    fontWeight: 600,
-                    cursor: 'pointer',
-                    minWidth: 50
-                  }}
-                  title="Copy API key"
-                >
-                  Copy
-                </button>
-              </div>
+        )}
+        
+        {/* Hero Section */}
+        <div className="text-center p-6 pb-4">
+          {/* Logo and Title */}
+          <div className="flex items-center justify-center mb-4">
+            <div className="bg-red-600 rounded-full w-12 h-12 flex items-center justify-center mr-3 shadow-lg">
+              <span className="text-white text-2xl font-bold">▶</span>
             </div>
-            <div style={{ fontSize: 12, color: '#888', marginTop: 8, fontStyle: 'italic' }}>
-              Copy any of these keys to test the application
+            <div>
+              <h1 className="text-2xl font-bold text-white leading-tight">YouTube Rating Analyzer</h1>
+              <p className="text-gray-400 text-sm">AI-powered video insights</p>
+            </div>
+          </div>
+
+          {/* Features */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="bg-gray-800/50 rounded-lg p-3 text-left">
+              <div className="text-blue-400 text-sm font-medium">🎯 Smart Analysis</div>
+              <div className="text-gray-300 text-xs">Real comment insights</div>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-3 text-left">
+              <div className="text-green-400 text-sm font-medium">🔒 Private</div>
+              <div className="text-gray-300 text-xs">No data stored</div>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-3 text-left">
+              <div className="text-purple-400 text-sm font-medium">⚡ Fast</div>
+              <div className="text-gray-300 text-xs">Instant results</div>
+            </div>
+            <div className="bg-gray-800/50 rounded-lg p-3 text-left">
+              <div className="text-yellow-400 text-sm font-medium">📱 Mobile</div>
+              <div className="text-gray-300 text-xs">Works anywhere</div>
+            </div>
+          </div>
+
+          {/* Test API Keys */}
+          <div className="bg-gradient-to-r from-blue-900/20 to-purple-900/20 rounded-xl p-4 mb-6 border border-blue-500/20">
+            <h3 className="text-white font-semibold mb-3 text-sm">🚀 Try these API keys for testing:</h3>
+            <div className="space-y-2">
+              {testApiKeys.map((apiKey, index) => (
+                <div key={index} className="flex items-center gap-2 bg-gray-800/50 rounded-lg p-2">
+                  <code className="flex-1 text-xs text-gray-300 font-mono truncate">
+                    {apiKey}
+                  </code>
+                  <button
+                    onClick={() => copyApiKey(apiKey)}
+                    className={`px-2 py-1 rounded text-xs font-medium transition-all ${
+                      copiedKey === apiKey 
+                        ? 'bg-green-600 text-white' 
+                        : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                    }`}
+                  >
+                    {copiedKey === apiKey ? '✓' : 'Copy'}
+                  </button>
+                  <button
+                    onClick={() => useTestKey(apiKey)}
+                    className="px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-medium transition-all"
+                  >
+                    Use
+                  </button>
+                </div>
+              ))}
             </div>
           </div>
         </div>
-        <form onSubmit={handleSubmit}>
-          <h2 className="text-lg font-bold mb-2" style={{ color: '#fff' }}>Enter your YouTube API Key</h2>
-          <p className="mb-4 text-sm" style={{ color: '#ccc' }}>You need a YouTube Data API v3 key to use this app. <a href='https://youtu.be/fXPuQY1LKbY?feature=shared' target='_blank' rel='noopener noreferrer' className='text-blue-400 underline'>Get one here</a>.</p>
-          <input
-            type="text"
-            value={input}
-            onChange={e => setInput(e.target.value)}
-            className="border rounded px-2 py-1 w-full mb-4"
-            style={{ color: '#111', background: '#fff', fontSize: 16 }}
-            placeholder="Paste your YouTube API key here"
-            autoFocus
-          />
-          {error && <div className="text-red-600 mb-2 text-sm font-semibold">{error}</div>}
-          <button type="submit" className="w-full bg-red-600 text-white py-2 rounded font-bold text-lg hover:bg-red-700 transition">Continue</button>
-        </form>
+
+        {/* API Key Input Form */}
+        <div className="px-6 pb-6">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div>
+              <label className="block text-white font-medium mb-2 text-sm">
+                Enter YouTube API Key
+              </label>
+              <p className="text-gray-400 text-xs mb-3">
+                Need your own key? <a href='https://youtu.be/fXPuQY1LKbY?feature=shared' target='_blank' rel='noopener noreferrer' className='text-blue-400 hover:text-blue-300 underline'>Get one here</a>
+              </p>
+              <input
+                type="text"
+                value={input}
+                onChange={e => setInput(e.target.value)}
+                className="w-full bg-gray-800 border border-gray-600 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all"
+                placeholder="Paste your YouTube API key here"
+                autoFocus
+              />
+            </div>
+            {error && (
+              <div className="bg-red-900/20 border border-red-500/30 rounded-lg p-3">
+                <div className="text-red-400 text-sm">{error}</div>
+              </div>
+            )}
+            <button 
+              type="submit" 
+              className="w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white py-3 rounded-lg font-semibold transition-all transform hover:scale-[1.02] focus:ring-2 focus:ring-red-500/20"
+            >
+              Start Analyzing Videos
+            </button>
+          </form>
+        </div>
       </div>
     </div>
   );

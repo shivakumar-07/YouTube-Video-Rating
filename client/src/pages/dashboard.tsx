@@ -8,7 +8,6 @@ import VideoSearch from "@/components/video-search";
 import VideoCard from "@/components/video-card";
 import CommentAnalysis from "@/components/comment-analysis";
 import type { Video, AnalysisResult } from "@shared/schema";
-import { useNavigate, useLocation } from "react-router-dom";
 
 function fetchYouTubeSuggestions(query: string): Promise<string[]> {
   return fetch(`/api/suggest?q=${encodeURIComponent(query)}`)
@@ -34,8 +33,6 @@ export default function Dashboard() {
   const [highlightedSuggestion, setHighlightedSuggestion] = useState<number>(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const bufferRef = useRef<number>(0);
-  const navigate = useNavigate();
-  const location = useLocation();
   const [error, setError] = useState<string | null>(null);
   const [lastSearchQuery, setLastSearchQuery] = useState<string>("");
   const [lastSearchResults, setLastSearchResults] = useState<Video[]>([]);
@@ -278,12 +275,20 @@ export default function Dashboard() {
 
   // Update handleTrendingOrSuggestionClick to use filters
   const handleTrendingOrSuggestionClick = (term: string) => {
-    navigate(`/?q=${encodeURIComponent(term)}&order=${sortBy}&type=${type}&uploadDate=${uploadDate}&duration=${duration}`);
+    // This function is now responsible for updating the URL and state
+    // It will be called from the search bar or suggestion chips
+    // For now, it just updates the search query and sorts
+    setSearchQuery(term);
+    setSortBy('relevance');
+    setType('video');
+    setUploadDate('any');
+    setDuration('any');
+    setActiveCategory(null);
   };
 
   // On search or filter change, fetch first page
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(window.location.search);
     const q = params.get("q") || "";
     setVideos([]);
     setError(null);
@@ -319,7 +324,7 @@ export default function Dashboard() {
       });
     }
     // eslint-disable-next-line
-  }, [location.search, sortBy, type, uploadDate, duration]);
+  }, [window.location.search, sortBy, type, uploadDate, duration]);
 
   // Efficiently load ratings for only new videos
   useEffect(() => {
@@ -364,10 +369,10 @@ export default function Dashboard() {
 
   // Sync searchQuery state with URL 'q' param
   useEffect(() => {
-    const params = new URLSearchParams(location.search);
+    const params = new URLSearchParams(window.location.search);
     const q = params.get('q') || '';
     setSearchQuery(q);
-  }, [location.search]);
+  }, [window.location.search]);
 
   // Update URL on search, category, or logo click
   const handleLogoClick = () => {
@@ -378,11 +383,11 @@ export default function Dashboard() {
     setUploadDate('any');
     setDuration('any');
     setActiveCategory(null);
-    navigate(`/?q=${encodeURIComponent('cse course')}&order=relevance&type=video&uploadDate=any&duration=any`);
+    window.history.pushState({}, '', '/?q=cse+course&order=relevance&type=video&uploadDate=any&duration=any');
   };
   const handleCategoryClick = (catId: string | null) => {
-    if (catId === null) navigate("/");
-    else navigate(`/?category=${encodeURIComponent(catId)}`);
+    if (catId === null) window.history.pushState({}, '', '/');
+    else window.history.pushState({}, '', `/?category=${encodeURIComponent(catId)}`);
   };
 
   const handleVideoSelect = (video: Video) => {
@@ -514,7 +519,7 @@ export default function Dashboard() {
                       if (lastSearchQuery) {
                         setSearchQuery(lastSearchQuery);
                         setVideos(lastSearchResults);
-                        navigate(`/?q=${encodeURIComponent(lastSearchQuery)}&order=${sortBy}&type=${type}&uploadDate=${uploadDate}&duration=${duration}`);
+                        window.history.pushState({}, '', `/${window.location.search.replace(/q=[^&]*/, '')}q=${encodeURIComponent(lastSearchQuery)}&order=${sortBy}&type=${type}&uploadDate=${uploadDate}&duration=${duration}`);
                       } else {
                         // If on homepage, do nothing (trending/default will show)
                         setSearchQuery("");
@@ -523,8 +528,8 @@ export default function Dashboard() {
                         setType('video');
                         setUploadDate('any');
                         setDuration('any');
-                        if (location.pathname !== "/" || location.search) {
-                          navigate("/");
+                        if (window.location.pathname !== "/" || window.location.search) {
+                          window.history.pushState({}, '', '/');
                         }
                       }
                     }
