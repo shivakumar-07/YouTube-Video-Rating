@@ -201,6 +201,103 @@ function ApiKeyModal({ setApiKey, onClose, canClose }: { setApiKey: (key: string
             <li>• No account or history required—your privacy is protected</li>
             <li>• Works with your own YouTube Data API key</li>
           </ul>
+          
+          {/* Test API Keys Section */}
+          <div style={{ background: '#1a1a1a', borderRadius: 8, padding: 16, marginBottom: 16, border: '1px solid #444' }}>
+            <div style={{ fontSize: 16, fontWeight: 600, color: '#fff', marginBottom: 12 }}>Test the site with these API keys:</div>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              {/* First API Key */}
+              <div style={{ display: 'flex', alignItems: 'center', background: '#2a2a2a', borderRadius: 6, padding: 8 }}>
+                <code style={{ 
+                  flex: 1, 
+                  fontSize: 12, 
+                  color: '#e5e5e5', 
+                  fontFamily: 'monospace', 
+                  wordBreak: 'break-all',
+                  marginRight: 8
+                }}>
+                  AIzaSyB5UKhMFBcaxkoQIc4yHqsUwfjWG294QT8
+                </code>
+                <button
+                  onClick={() => {
+                    const apiKey = 'AIzaSyB5UKhMFBcaxkoQIc4yHqsUwfjWG294QT8';
+                    navigator.clipboard.writeText(apiKey).then(() => {
+                      // Optional: Add visual feedback here
+                    }).catch(() => {
+                      // Fallback for older browsers
+                      const textArea = document.createElement('textarea');
+                      textArea.value = apiKey;
+                      document.body.appendChild(textArea);
+                      textArea.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(textArea);
+                    });
+                  }}
+                  style={{
+                    background: '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    padding: '4px 8px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    minWidth: 50
+                  }}
+                  title="Copy API key"
+                >
+                  Copy
+                </button>
+              </div>
+              
+              {/* Second API Key */}
+              <div style={{ display: 'flex', alignItems: 'center', background: '#2a2a2a', borderRadius: 6, padding: 8 }}>
+                <code style={{ 
+                  flex: 1, 
+                  fontSize: 12, 
+                  color: '#e5e5e5', 
+                  fontFamily: 'monospace', 
+                  wordBreak: 'break-all',
+                  marginRight: 8
+                }}>
+                  AIzaSyAKmmSXOyaCn2fNKWAu0mXXLMRFm5ITH44
+                </code>
+                <button
+                  onClick={() => {
+                    const apiKey = 'AIzaSyAKmmSXOyaCn2fNKWAu0mXXLMRFm5ITH44';
+                    navigator.clipboard.writeText(apiKey).then(() => {
+                      // Optional: Add visual feedback here
+                    }).catch(() => {
+                      // Fallback for older browsers
+                      const textArea = document.createElement('textarea');
+                      textArea.value = apiKey;
+                      document.body.appendChild(textArea);
+                      textArea.select();
+                      document.execCommand('copy');
+                      document.body.removeChild(textArea);
+                    });
+                  }}
+                  style={{
+                    background: '#4CAF50',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: 4,
+                    padding: '4px 8px',
+                    fontSize: 11,
+                    fontWeight: 600,
+                    cursor: 'pointer',
+                    minWidth: 50
+                  }}
+                  title="Copy API key"
+                >
+                  Copy
+                </button>
+              </div>
+            </div>
+            <div style={{ fontSize: 12, color: '#888', marginTop: 8, fontStyle: 'italic' }}>
+              Copy any of these keys to test the application
+            </div>
+          </div>
         </div>
         <form onSubmit={handleSubmit}>
           <h2 className="text-lg font-bold mb-2" style={{ color: '#fff' }}>Enter your YouTube API Key</h2>
